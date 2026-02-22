@@ -1,0 +1,128 @@
+{
+  "framework": "ISO/IEC 27001:2022",
+  "version": "2022",
+  "description": "Information Security Management System",
+  "controls": [
+    {
+      "id": "A.5.1",
+      "title": "Policies for information security",
+      "category": "Organizational",
+      "description": "Information security policy and topic-specific policies shall be defined, approved, published, communicated and acknowledged",
+      "priority": "Critical"
+    },
+    {
+      "id": "A.5.2",
+      "title": "Information security roles and responsibilities",
+      "category": "Organizational",
+      "description": "Information security roles and responsibilities shall be defined and allocated",
+      "priority": "High"
+    },
+    {
+      "id": "A.5.3",
+      "title": "Segregation of duties",
+      "category": "Organizational",
+      "description": "Conflicting duties and conflicting areas of responsibility shall be segregated",
+      "priority": "High"
+    },
+    {
+      "id": "A.8.1",
+      "title": "User endpoint devices",
+      "category": "Technical",
+      "description": "Information stored on, processed by or accessible via user endpoint devices shall be protected",
+      "priority": "Critical"
+    },
+    {
+      "id": "A.8.2",
+      "title": "Privileged access rights",
+      "category": "Technical",
+      "description": "The allocation and use of privileged access rights shall be restricted and managed",
+      "priority": "Critical"
+    },
+    {
+      "id": "A.8.3",
+      "title": "Information access restriction",
+      "category": "Technical",
+      "description": "Access to information and other associated assets shall be restricted in accordance with established access control policy",
+      "priority": "Critical"
+    },
+    {
+      "id": "A.8.4",
+      "title": "Access to source code",
+      "category": "Technical",
+      "description": "Read and write access to source code, development tools and software libraries shall be appropriately managed",
+      "priority": "High"
+    },
+    {
+      "id": "A.8.5",
+      "title": "Secure authentication",
+      "category": "Technical",
+      "description": "Secure authentication technologies and procedures shall be implemented",
+      "priority": "Critical"
+    },
+    {
+      "id": "A.8.6",
+      "title": "Capacity management",
+      "category": "Technical",
+      "description": "The use of resources shall be monitored and adjusted in line with current and expected capacity requirements",
+      "priority": "Medium"
+    },
+    {
+      "id": "A.8.7",
+      "title": "Protection against malware",
+      "category": "Technical",
+      "description": "Protection against malware shall be implemented and supported by appropriate user awareness",
+      "priority": "Critical"
+    },
+    {
+      "id": "A.8.8",
+      "title": "Management of technical vulnerabilities",
+      "category": "Technical",
+      "description": "Information about technical vulnerabilities of information systems in use shall be obtained, the organization's exposure to such vulnerabilities evaluated and appropriate measures taken",
+      "priority": "Critical"
+    },
+    {
+      "id": "A.8.10",
+      "title": "Information deletion",
+      "category": "Technical",
+      "description": "Information stored in information systems, devices or any other storage media shall be deleted when no longer required",
+      "priority": "Medium"
+    },
+    {
+      "id": "A.8.11",
+      "title": "Data masking",
+      "category": "Technical",
+      "description": "Data masking shall be used in accordance with the organization's access control policy and other related policies",
+      "priority": "Medium"
+    },
+    {
+      "id": "A.8.12",
+      "title": "Data leakage prevention",
+      "category": "Technical",
+      "description": "Data leakage prevention measures shall be applied to systems, networks and any other devices that process, store or transmit sensitive information",
+      "priority": "High"
+    },
+    {
+      "id": "A.8.23",
+      "title": "Web filtering",
+      "category": "Technical",
+      "description": "Access to external websites shall be managed to reduce exposure to malicious content",
+      "priority": "Medium"
+    },
+    {
+      "id": "A.8.24",
+      "title": "Use of cryptography",
+      "category": "Technical",
+      "description": "Rules for the effective use of cryptography, including cryptographic key management, shall be defined and implemented",
+      "priority": "Critical"
+    },
+    {
+      "id": "A.8.28",
+      "title": "Secure coding",
+      "category": "Technical",
+      "description": "Secure coding principles shall be applied to software development",
+      "priority": "High"
+    }
+  ],
+  "control_count": 93,
+  "sample_controls_shown": 17
+}

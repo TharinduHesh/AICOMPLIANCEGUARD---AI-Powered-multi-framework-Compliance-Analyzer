@@ -1,0 +1,93 @@
+{
+  "framework": "GDPR/PDPA",
+  "version": "2018",
+  "description": "General Data Protection Regulation and Personal Data Protection Act",
+  "controls": [
+    {
+      "id": "Art.5",
+      "title": "Principles relating to processing",
+      "category": "Principles",
+      "description": "Personal data shall be processed lawfully, fairly and in a transparent manner",
+      "priority": "Critical"
+    },
+    {
+      "id": "Art.6",
+      "title": "Lawfulness of processing",
+      "category": "Lawful Basis",
+      "description": "Processing shall be lawful only if and to the extent that at least one legal basis applies",
+      "priority": "Critical"
+    },
+    {
+      "id": "Art.13",
+      "title": "Information to be provided",
+      "category": "Transparency",
+      "description": "Where personal data are collected, the controller shall provide the data subject with information",
+      "priority": "High"
+    },
+    {
+      "id": "Art.15",
+      "title": "Right of access",
+      "category": "Rights",
+      "description": "The data subject shall have the right to obtain from the controller confirmation as to whether personal data are being processed",
+      "priority": "High"
+    },
+    {
+      "id": "Art.17",
+      "title": "Right to erasure",
+      "category": "Rights",
+      "description": "The data subject shall have the right to obtain from the controller the erasure of personal data",
+      "priority": "High"
+    },
+    {
+      "id": "Art.25",
+      "title": "Data protection by design and by default",
+      "category": "Design",
+      "description": "The controller shall implement appropriate technical and organizational measures",
+      "priority": "Critical"
+    },
+    {
+      "id": "Art.30",
+      "title": "Records of processing activities",
+      "category": "Accountability",
+      "description": "Each controller and processor shall maintain a record of processing activities",
+      "priority": "High"
+    },
+    {
+      "id": "Art.32",
+      "title": "Security of processing",
+      "category": "Security",
+      "description": "The controller and processor shall implement appropriate technical and organizational measures to ensure a level of security",
+      "priority": "Critical"
+    },
+    {
+      "id": "Art.33",
+      "title": "Notification of a personal data breach",
+      "category": "Breach",
+      "description": "In the case of a personal data breach, the controller shall notify the supervisory authority",
+      "priority": "Critical"
+    },
+    {
+      "id": "Art.34",
+      "title": "Communication of a personal data breach to the data subject",
+      "category": "Breach",
+      "description": "When the breach is likely to result in a high risk, the controller shall communicate the breach to the data subject",
+      "priority": "Critical"
+    },
+    {
+      "id": "Art.35",
+      "title": "Data protection impact assessment",
+      "category": "Assessment",
+      "description": "Where processing is likely to result in high risk, prior to the processing, the controller shall carry out an assessment",
+      "priority": "High"
+    },
+    {
+      "id": "Art.37",
+      "title": "Designation of the data protection officer",
+      "category": "DPO",
+      "description": "The controller and processor shall designate a data protection officer in certain cases",
+      "priority": "Medium"
+    }
+  ],
+  "control_count": 57,
+  "sample_controls_shown": 12
+}

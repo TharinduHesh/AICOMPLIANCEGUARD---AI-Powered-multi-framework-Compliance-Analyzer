@@ -1,0 +1,114 @@
+{
+  "framework": "NIST Cybersecurity Framework",
+  "version": "2.0",
+  "description": "Framework for improving critical infrastructure cybersecurity",
+  "controls": [
+    {
+      "id": "ID.GV-01",
+      "title": "Organizational cybersecurity policy",
+      "category": "Identify - Govern",
+      "description": "Organizational cybersecurity policy is established and communicated",
+      "priority": "Critical"
+    },
+    {
+      "id": "ID.GV-02",
+      "title": "Cybersecurity roles and responsibilities",
+      "category": "Identify - Govern",
+      "description": "Cybersecurity roles and responsibilities are coordinated and aligned with internal and external stakeholders",
+      "priority": "High"
+    },
+    {
+      "id": "ID.RA-01",
+      "title": "Asset vulnerabilities",
+      "category": "Identify - Risk Assessment",
+      "description": "Asset vulnerabilities are identified and documented",
+      "priority": "Critical"
+    },
+    {
+      "id": "ID.RA-02",
+      "title": "Cyber threat intelligence",
+      "category": "Identify - Risk Assessment",
+      "description": "Cyber threat intelligence is received from information sharing forums and sources",
+      "priority": "High"
+    },
+    {
+      "id": "PR.AC-01",
+      "title": "Identity management",
+      "category": "Protect - Access Control",
+      "description": "Identities and credentials are issued, managed, verified, revoked, and audited for authorized devices, users and processes",
+      "priority": "Critical"
+    },
+    {
+      "id": "PR.AC-03",
+      "title": "Remote access",
+      "category": "Protect - Access Control",
+      "description": "Remote access is managed",
+      "priority": "Critical"
+    },
+    {
+      "id": "PR.AC-04",
+      "title": "Access permissions and authorizations",
+      "category": "Protect - Access Control",
+      "description": "Access permissions and authorizations are managed, incorporating the principles of least privilege and separation of duties",
+      "priority": "Critical"
+    },
+    {
+      "id": "PR.DS-01",
+      "title": "Data-at-rest protection",
+      "category": "Protect - Data Security",
+      "description": "Data-at-rest is protected",
+      "priority": "Critical"
+    },
+    {
+      "id": "PR.DS-02",
+      "title": "Data-in-transit protection",
+      "category": "Protect - Data Security",
+      "description": "Data-in-transit is protected",
+      "priority": "Critical"
+    },
+    {
+      "id": "PR.PT-01",
+      "title": "Audit/log records",
+      "category": "Protect - Protective Technology",
+      "description": "Audit/log records are determined, documented, implemented, and reviewed",
+      "priority": "High"
+    },
+    {
+      "id": "DE.CM-01",
+      "title": "Network monitoring",
+      "category": "Detect - Continuous Monitoring",
+      "description": "The network is monitored to detect potential cybersecurity events",
+      "priority": "Critical"
+    },
+    {
+      "id": "DE.CM-03",
+      "title": "Personnel activity monitoring",
+      "category": "Detect - Continuous Monitoring",
+      "description": "Personnel activity is monitored to detect potential cybersecurity events",
+      "priority": "High"
+    },
+    {
+      "id": "RS.RP-01",
+      "title": "Response plan execution",
+      "category": "Respond - Response Planning",
+      "description": "Response plan is executed during or after an incident",
+      "priority": "Critical"
+    },
+    {
+      "id": "RS.AN-01",
+      "title": "Notifications from detection systems",
+      "category": "Respond - Analysis",
+      "description": "Notifications from detection systems are investigated",
+      "priority": "Critical"
+    },
+    {
+      "id": "RC.RP-01",
+      "title": "Recovery plan execution",
+      "category": "Recover - Recovery Planning",
+      "description": "Recovery plan is executed during or after a cybersecurity incident",
+      "priority": "Critical"
+    }
+  ],
+  "control_count": 108,
+  "sample_controls_shown": 15
+}

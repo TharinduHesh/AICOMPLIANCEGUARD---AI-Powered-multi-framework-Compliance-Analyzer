@@ -1,0 +1,106 @@
+{
+  "framework": "ISO 9001:2015",
+  "version": "2015",
+  "description": "Quality Management System",
+  "controls": [
+    {
+      "id": "4.4",
+      "title": "Quality management system and its processes",
+      "category": "QMS",
+      "description": "Establish, implement, maintain and continually improve a quality management system",
+      "priority": "Critical"
+    },
+    {
+      "id": "5.1",
+      "title": "Leadership and commitment",
+      "category": "Leadership",
+      "description": "Top management shall demonstrate leadership and commitment to the QMS",
+      "priority": "Critical"
+    },
+    {
+      "id": "5.2",
+      "title": "Quality policy",
+      "category": "Leadership",
+      "description": "Top management shall establish, implement and maintain a quality policy",
+      "priority": "High"
+    },
+    {
+      "id": "5.3",
+      "title": "Organizational roles, responsibilities and authorities",
+      "category": "Leadership",
+      "description": "Top management shall ensure responsibilities and authorities are assigned, communicated and understood",
+      "priority": "High"
+    },
+    {
+      "id": "6.1",
+      "title": "Actions to address risks and opportunities",
+      "category": "Planning",
+      "description": "Determine risks and opportunities that need to be addressed to ensure the QMS can achieve its intended results",
+      "priority": "Critical"
+    },
+    {
+      "id": "6.2",
+      "title": "Quality objectives and planning to achieve them",
+      "category": "Planning",
+      "description": "Establish quality objectives at relevant functions, levels and processes",
+      "priority": "High"
+    },
+    {
+      "id": "7.5",
+      "title": "Documented information",
+      "category": "Support",
+      "description": "The QMS shall include documented information required by the standard and determined necessary",
+      "priority": "High"
+    },
+    {
+      "id": "8.1",
+      "title": "Operational planning and control",
+      "category": "Operation",
+      "description": "Plan, implement and control processes needed to meet requirements",
+      "priority": "Critical"
+    },
+    {
+      "id": "9.1",
+      "title": "Monitoring, measurement, analysis and evaluation",
+      "category": "Performance",
+      "description": "Determine what needs to be monitored and measured, methods for monitoring, measurement, analysis and evaluation",
+      "priority": "Critical"
+    },
+    {
+      "id": "9.2",
+      "title": "Internal audit",
+      "category": "Performance",
+      "description": "Conduct internal audits at planned intervals",
+      "priority": "Critical"
+    },
+    {
+      "id": "9.3",
+      "title": "Management review",
+      "category": "Performance",
+      "description": "Top management shall review the QMS at planned intervals",
+      "priority": "Critical"
+    },
+    {
+      "id": "10.1",
+      "title": "General - Improvement",
+      "category": "Improvement",
+      "description": "Determine and select opportunities for improvement and implement necessary actions",
+      "priority": "High"
+    },
+    {
+      "id": "10.2",
+      "title": "Nonconformity and corrective action",
+      "category": "Improvement",
+      "description": "React to nonconformity and take action to control and correct it",
+      "priority": "Critical"
+    },
+    {
+      "id": "10.3",
+      "title": "Continual improvement",
+      "category": "Improvement",
+      "description": "Continually improve the suitability, adequacy and effectiveness of the QMS",
+      "priority": "High"
+    }
+  ],
+  "control_count": 14
+}
