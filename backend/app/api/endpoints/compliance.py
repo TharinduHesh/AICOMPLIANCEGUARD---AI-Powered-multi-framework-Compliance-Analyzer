@@ -21,6 +21,7 @@ from app.modules.iso9001_validator import iso9001_validator
 from app.modules.audit_predictor import audit_predictor
 from app.modules.security_layer import security_layer
 from app.modules.knowledge_graph import knowledge_graph
+from app.modules.firebase_storage import firebase_storage
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -64,6 +65,18 @@ async def upload_document(file: UploadFile = File(...)):
                 'hash': file_hash[:16]
             }
         )
+        
+        # Store audit log in Firebase
+        try:
+            firebase_storage.store_audit_log({
+                'event_type': 'document_upload',
+                'file_name': file.filename,
+                'file_size': len(file_data),
+                'file_hash': file_hash[:32],
+                'ip_address': 'unknown'  # Add actual IP from request if needed
+            })
+        except Exception as e:
+            logger.warning(f"Firebase audit log failed: {str(e)}")
         
         # Generate file ID
         file_id = secrets.token_urlsafe(16)
@@ -148,7 +161,7 @@ async def analyze_compliance(request: ComplianceAnalysisRequest):
         
         logger.info(f"Analysis completed: {analysis_id}")
         
-        return ComplianceAnalysisResponse(
+        response = ComplianceAnalysisResponse(
             analysis_id=analysis_id,
             file_name=f"document_{request.file_id}",
             frameworks=request.frameworks,
@@ -159,6 +172,15 @@ async def analyze_compliance(request: ComplianceAnalysisRequest):
             audit_readiness=audit_readiness,
             analyzed_at=datetime.utcnow().isoformat()
         )
+        
+        # Store metadata in Firebase (NO raw document content)
+        try:
+            firebase_storage.store_analysis_metadata(response.dict())
+            logger.info(f"✅ Metadata stored in Firebase for analysis: {analysis_id}")
+        except Exception as e:
+            logger.warning(f"Firebase storage failed (continuing without): {str(e)}")
+        
+        return response
         
     except Exception as e:
         logger.error(f"Analysis error: {str(e)}", exc_info=True)

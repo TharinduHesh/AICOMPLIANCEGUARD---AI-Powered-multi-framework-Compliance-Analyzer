@@ -9,6 +9,7 @@ import UploadDocument from './pages/UploadDocument'
 import AnalysisResults from './pages/AnalysisResults'
 import Frameworks from './pages/Frameworks'
 import About from './pages/About'
+import History from './pages/History'
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
           <Route path="/upload" element={<UploadDocument />} />
           <Route path="/results/:analysisId" element={<AnalysisResults />} />
           <Route path="/frameworks" element={<Frameworks />} />
+          <Route path="/history" element={<History />} />
           <Route path="/about" element={<About />} />
         </Routes>
       </Layout>

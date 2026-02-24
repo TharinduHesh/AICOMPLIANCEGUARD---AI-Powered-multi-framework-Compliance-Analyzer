@@ -8,28 +8,44 @@ import './index.css'
 
 const theme = createTheme({
   palette: {
-    mode: 'light',
+    mode: 'dark',
     primary: {
-      main: '#1976d2',
-      dark: '#115293',
-      light: '#4791db',
+      main: '#1e3a8a', // Navy blue
+      dark: '#0f2556',
+      light: '#3b5ba5',
+      contrastText: '#ffffff',
     },
     secondary: {
-      main: '#dc004e',
+      main: '#2563eb', // Lighter blue
+      dark: '#1e40af',
+      light: '#3b82f6',
+      contrastText: '#ffffff',
     },
     success: {
-      main: '#2e7d32',
+      main: '#10b981',
+      contrastText: '#ffffff',
     },
     warning: {
-      main: '#ed6c02',
+      main: '#f59e0b',
+      contrastText: '#ffffff',
     },
     error: {
-      main: '#d32f2f',
+      main: '#ef4444',
+      contrastText: '#ffffff',
+    },
+    info: {
+      main: '#3b82f6',
+      contrastText: '#ffffff',
     },
     background: {
-      default: '#f5f5f5',
-      paper: '#ffffff',
+      default: '#0f172a', // Dark navy background
+      paper: '#1e293b', // Slightly lighter navy for cards
     },
+    text: {
+      primary: '#ffffff',
+      secondary: '#cbd5e1',
+    },
+    divider: '#334155',
   },
   typography: {
     fontFamily: [
@@ -41,6 +57,48 @@ const theme = createTheme({
       'Arial',
       'sans-serif',
     ].join(','),
+    allVariants: {
+      color: '#ffffff',
+    },
+  },
+  components: {
+    MuiAppBar: {
+      styleOverrides: {
+        root: {
+          backgroundColor: '#1e3a8a',
+          color: '#ffffff',
+        },
+      },
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          backgroundImage: 'none',
+        },
+      },
+    },
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          backgroundColor: '#1e293b',
+          borderRadius: 12,
+        },
+      },
+    },
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          textTransform: 'none',
+          fontWeight: 600,
+        },
+        contained: {
+          boxShadow: 'none',
+          '&:hover': {
+            boxShadow: 'none',
+          },
+        },
+      },
+    },
   },
 })
 

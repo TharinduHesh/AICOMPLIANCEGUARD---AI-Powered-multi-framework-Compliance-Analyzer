@@ -24,12 +24,14 @@ import SecurityIcon from '@mui/icons-material/Security'
 import DashboardIcon from '@mui/icons-material/Dashboard'
 import UploadFileIcon from '@mui/icons-material/UploadFile'
 import AssessmentIcon from '@mui/icons-material/Assessment'
+import HistoryIcon from '@mui/icons-material/History'
 import InfoIcon from '@mui/icons-material/Info'
 
 const pages = [
   { name: 'Dashboard', path: '/dashboard', icon: <DashboardIcon /> },
   { name: 'Upload Document', path: '/upload', icon: <UploadFileIcon /> },
   { name: 'Frameworks', path: '/frameworks', icon: <AssessmentIcon /> },
+  { name: 'History', path: '/history', icon: <HistoryIcon /> },
   { name: 'About', path: '/about', icon: <InfoIcon /> },
 ]
 
@@ -45,10 +47,10 @@ function Layout({ children }) {
 
   const drawer = (
     <Box onClick={handleDrawerToggle} sx={{ textAlign: 'center' }}>
-      <Typography variant="h6" sx={{ my: 2 }}>
+      <Typography variant="h6" sx={{ my: 2, color: 'white' }}>
         🔐 AIComplianceGuard
       </Typography>
-      <Divider />
+      <Divider sx={{ borderColor: '#334155' }} />
       <List>
         {pages.map((page) => (
           <ListItem
@@ -57,13 +59,20 @@ function Layout({ children }) {
             to={page.path}
             selected={location.pathname === page.path}
             sx={{
+              color: 'white',
               '&.Mui-selected': {
-                backgroundColor: 'primary.light',
-                color: 'primary.contrastText',
+                backgroundColor: '#1e3a8a',
+                color: 'white',
+                '& .MuiListItemIcon-root': {
+                  color: 'white',
+                },
+              },
+              '&:hover': {
+                backgroundColor: '#334155',
               },
             }}
           >
-            <ListItemIcon>{page.icon}</ListItemIcon>
+            <ListItemIcon sx={{ color: 'white' }}>{page.icon}</ListItemIcon>
             <ListItemText primary={page.name} />
           </ListItem>
         ))}
@@ -116,7 +125,10 @@ function Layout({ children }) {
                     color: 'white',
                     display: 'block',
                     backgroundColor:
-                      location.pathname === page.path ? 'rgba(255, 255, 255, 0.2)' : 'transparent',
+                      location.pathname === page.path ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
+                    '&:hover': {
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    },
                   }}
                 >
                   {page.name}
@@ -136,7 +148,12 @@ function Layout({ children }) {
         }}
         sx={{
           display: { xs: 'block', md: 'none' },
-          '& .MuiDrawer-paper': { boxSizing: 'border-box', width: 240 },
+          '& .MuiDrawer-paper': { 
+            boxSizing: 'border-box', 
+            width: 240,
+            backgroundColor: '#1e293b',
+            color: '#ffffff',
+          },
         }}
       >
         {drawer}
@@ -152,7 +169,8 @@ function Layout({ children }) {
           py: 3,
           px: 2,
           mt: 'auto',
-          backgroundColor: theme.palette.grey[200],
+          backgroundColor: '#1e293b',
+          borderTop: '1px solid #334155',
         }}
       >
         <Container maxWidth="xl">

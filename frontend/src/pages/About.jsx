@@ -72,7 +72,7 @@ function About() {
 
   return (
     <Box>
-      <Paper elevation={3} sx={{ p: 4, mb: 4, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
+      <Paper elevation={3} sx={{ p: 4, mb: 4, background: 'linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%)', color: 'white' }}>
         <Typography variant="h3" component="h1" gutterBottom fontWeight="bold">
           About AIComplianceGuard
         </Typography>
@@ -217,120 +217,6 @@ function About() {
                 <Typography variant="body2">Resilient design</Typography>
               </li>
             </ul>
-          </Grid>
-        </Grid>
-      </Paper>
-
-      <Paper elevation={2} sx={{ p: 3, mb: 4 }}>
-        <Typography variant="h5" gutterBottom>
-          💼 Commercial Model
-        </Typography>
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card variant="outlined">
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Student Edition
-                </Typography>
-                <Chip label="Free" color="success" size="small" />
-                <Typography variant="body2" sx={{ mt: 1 }}>
-                  Limited features for educational purposes
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card variant="outlined">
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  SME Package
-                </Typography>
-                <Chip label="$29/month" color="primary" size="small" />
-                <Typography variant="body2" sx={{ mt: 1 }}>
-                  Full features for small-medium enterprises
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card variant="outlined">
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Enterprise
-                </Typography>
-                <Chip label="$199/month" color="warning" size="small" />
-                <Typography variant="body2" sx={{ mt: 1 }}>
-                  Advanced features, priority support
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card variant="outlined">
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  On-Premise
-                </Typography>
-                <Chip label="Custom" color="error" size="small" />
-                <Typography variant="body2" sx={{ mt: 1 }}>
-                  Self-hosted secure edition
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
-      </Paper>
-
-      <Paper elevation={2} sx={{ p: 3 }}>
-        <Typography variant="h5" gutterBottom>
-          🛠️ Technology Stack
-        </Typography>
-        <Grid container spacing={2}>
-          <Grid item xs={12} md={6}>
-            <Typography variant="h6" gutterBottom>
-              Backend
-            </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              <Chip label="Python 3.11" size="small" />
-              <Chip label="FastAPI" size="small" />
-              <Chip label="Transformers" size="small" />
-              <Chip label="spaCy" size="small" />
-              <Chip label="Scikit-learn" size="small" />
-              <Chip label="PyPDF2" size="small" />
-              <Chip label="python-docx" size="small" />
-            </Box>
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <Typography variant="h6" gutterBottom>
-              Frontend
-            </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              <Chip label="React 18" size="small" />
-              <Chip label="Material-UI" size="small" />
-              <Chip label="Recharts" size="small" />
-              <Chip label="Axios" size="small" />
-              <Chip label="React Router" size="small" />
-            </Box>
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <Typography variant="h6" gutterBottom>
-              Database & Auth
-            </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              <Chip label="Firebase Firestore" size="small" />
-              <Chip label="Firebase Auth" size="small" />
-              <Chip label="JWT" size="small" />
-            </Box>
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <Typography variant="h6" gutterBottom>
-              Deployment
-            </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              <Chip label="Docker" size="small" />
-              <Chip label="Docker Compose" size="small" />
-              <Chip label="GitHub Actions" size="small" />
-            </Box>
           </Grid>
         </Grid>
       </Paper>
