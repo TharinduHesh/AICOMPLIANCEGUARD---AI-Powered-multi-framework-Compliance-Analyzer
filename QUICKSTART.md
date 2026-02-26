@@ -5,7 +5,7 @@
 You have:
 - ✅ Python 3.13.7 installed (use `py` command)
 - ❌ Docker not installed
-- ✅ Virtual environment created at `backend\venv`
+- ✅ Virtual environment created at `.venv` (root directory)
 
 ## Option 1: Let Dependencies Install (Recommended)
 
@@ -13,7 +13,7 @@ The installation was started but cancelled. Please continue:
 
 ```powershell
 # 1. Activate virtual environment
-& "C:\Users\ranas\Desktop\ISP Project\backend\venv\Scripts\Activate.ps1"
+& "C:\Users\ranas\Desktop\ISP Project\.venv\Scripts\Activate.ps1"
 
 # 2. Install dependencies (this will take 10-15 minutes with slow network)
 pip install -r backend\requirements.txt
@@ -53,7 +53,7 @@ If you want to test quickly without waiting for full installation:
 
 ```powershell
 # 1. Activate venv
-& "C:\Users\ranas\Desktop\ISP Project\backend\venv\Scripts\Activate.ps1"
+& "C:\Users\ranas\Desktop\ISP Project\.venv\Scripts\Activate.ps1"
 
 # 2. Install only core dependencies (much faster)
 pip install fastapi uvicorn python-dotenv pydantic

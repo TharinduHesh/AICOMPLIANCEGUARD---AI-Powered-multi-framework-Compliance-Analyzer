@@ -57,16 +57,22 @@ class RiskPredictionResponse(BaseModel):
 
 class UserLogin(BaseModel):
     """User login request"""
-    email: str
-    password: str
+    company_id: str = Field(..., min_length=3, max_length=50, description="Company ID")
+    password: str = Field(..., min_length=6, description="Password")
 
 
 class UserRegister(BaseModel):
     """User registration request"""
-    email: str
-    password: str
-    full_name: str
-    organization: Optional[str] = None
+    company_id: str = Field(..., min_length=3, max_length=50, description="Unique Company ID")
+    company_name: str = Field(..., min_length=2, max_length=100, description="Company display name")
+    password: str = Field(..., min_length=6, description="Password (min 6 characters)")
+
+
+class UserResponse(BaseModel):
+    """User info returned after login/register"""
+    company_id: str
+    company_name: str
+    created_at: str
 
 
 class TokenResponse(BaseModel):
@@ -81,3 +87,37 @@ class ErrorResponse(BaseModel):
     error: str
     message: str
     details: Optional[Dict] = None
+
+
+# ── Chat Models ──────────────────────────────────────────────
+
+class ChatMessageRequest(BaseModel):
+    """Request for sending a chat message"""
+    conversation_id: Optional[str] = Field(default=None, description="Conversation ID (leave empty for new)")
+    message: str = Field(..., description="User message text")
+
+
+class ChatMessageResponse(BaseModel):
+    """Response from the AI compliance chat"""
+    conversation_id: str
+    message: str
+    role: str = "assistant"
+    timestamp: str
+
+
+class ChatWithDocumentResponse(BaseModel):
+    """Response after uploading a document and asking a question"""
+    conversation_id: str
+    message: str
+    role: str = "assistant"
+    document_name: str
+    clauses_extracted: int
+    timestamp: str
+
+
+class ChatConversation(BaseModel):
+    """Full conversation object"""
+    conversation_id: str
+    created_at: str
+    document_name: Optional[str] = None
+    messages: List[Dict] = []

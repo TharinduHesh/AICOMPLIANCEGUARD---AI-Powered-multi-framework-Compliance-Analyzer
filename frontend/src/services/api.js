@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1'
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -22,6 +22,36 @@ api.interceptors.request.use(
     return Promise.reject(error)
   }
 )
+
+// Auth API
+export const authAPI = {
+  register: async (companyId, companyName, password) => {
+    const response = await api.post('/auth/register', {
+      company_id: companyId,
+      company_name: companyName,
+      password,
+    })
+    return response.data
+  },
+
+  login: async (companyId, password) => {
+    const response = await api.post('/auth/login', {
+      company_id: companyId,
+      password,
+    })
+    return response.data
+  },
+
+  getMe: async () => {
+    const response = await api.get('/auth/me')
+    return response.data
+  },
+
+  logout: () => {
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+  },
+}
 
 // Compliance API
 export const complianceAPI = {
@@ -71,24 +101,6 @@ export const analysisAPI = {
   },
 }
 
-// Auth API
-export const authAPI = {
-  login: async (email, password) => {
-    const response = await api.post('/auth/login', { email, password })
-    return response.data
-  },
-
-  logout: async () => {
-    const response = await api.post('/auth/logout')
-    return response.data
-  },
-
-  getCurrentUser: async () => {
-    const response = await api.get('/auth/me')
-    return response.data
-  },
-}
-
 // Admin API
 export const adminAPI = {
   getStats: async () => {
@@ -108,3 +120,51 @@ export const adminAPI = {
 }
 
 export default api
+
+// Chat API
+export const chatAPI = {
+  newConversation: async () => {
+    const response = await api.post('/chat/new')
+    return response.data
+  },
+
+  sendMessage: async (conversationId, message) => {
+    const response = await api.post('/chat/message', {
+      conversation_id: conversationId,
+      message,
+    })
+    return response.data
+  },
+
+  uploadDocument: async (conversationId, file) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('conversation_id', conversationId || '')
+    const response = await api.post('/chat/upload-document', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return response.data
+  },
+
+  uploadAndAsk: async (conversationId, file, message, frameworks) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('message', message || 'Analyze this document for compliance')
+    formData.append('conversation_id', conversationId || '')
+    formData.append('frameworks', frameworks || 'iso27001')
+    const response = await api.post('/chat/upload-and-ask', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return response.data
+  },
+
+  getConversation: async (conversationId) => {
+    const response = await api.get(`/chat/conversation/${conversationId}`)
+    return response.data
+  },
+
+  deleteConversation: async (conversationId) => {
+    const response = await api.delete(`/chat/conversation/${conversationId}`)
+    return response.data
+  },
+}

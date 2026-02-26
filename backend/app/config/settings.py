@@ -56,7 +56,7 @@ class Settings(BaseSettings):
     LOG_FILE: str = "./logs/aicomplianceguard.log"
     
     # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:8000"]
+    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:8000"]
     
     # Rate Limiting
     RATE_LIMIT_PER_MINUTE: int = 10

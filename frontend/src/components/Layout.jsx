@@ -21,6 +21,7 @@ import {
 } from '@mui/material'
 import MenuIcon from '@mui/icons-material/Menu'
 import SecurityIcon from '@mui/icons-material/Security'
+import ChatIcon from '@mui/icons-material/Chat'
 import DashboardIcon from '@mui/icons-material/Dashboard'
 import UploadFileIcon from '@mui/icons-material/UploadFile'
 import AssessmentIcon from '@mui/icons-material/Assessment'
@@ -28,6 +29,7 @@ import HistoryIcon from '@mui/icons-material/History'
 import InfoIcon from '@mui/icons-material/Info'
 
 const pages = [
+  { name: 'AI Chat', path: '/chat', icon: <ChatIcon /> },
   { name: 'Dashboard', path: '/dashboard', icon: <DashboardIcon /> },
   { name: 'Upload Document', path: '/upload', icon: <UploadFileIcon /> },
   { name: 'Frameworks', path: '/frameworks', icon: <AssessmentIcon /> },
