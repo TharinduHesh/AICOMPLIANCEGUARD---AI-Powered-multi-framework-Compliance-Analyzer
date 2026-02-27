@@ -167,4 +167,9 @@ export const chatAPI = {
     const response = await api.delete(`/chat/conversation/${conversationId}`)
     return response.data
   },
+
+  getLLMStatus: async () => {
+    const response = await api.get('/chat/llm/status')
+    return response.data
+  },
 }

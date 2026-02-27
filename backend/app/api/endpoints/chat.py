@@ -205,3 +205,21 @@ async def new_conversation():
         "message": greeting,
         "timestamp": datetime.utcnow().isoformat(),
     }
+
+
+@router.get("/llm/status")
+async def llm_status():
+    """Return current LLM provider status."""
+    try:
+        llm = chat_engine.llm
+        return {
+            "provider": settings.LLM_PROVIDER,
+            "available": llm is not None,
+            "model": settings.LLAMA_MODEL_FILE if settings.LLM_PROVIDER == "llama_cpp" else settings.LLAMA_HF_MODEL,
+        }
+    except Exception:
+        return {
+            "provider": settings.LLM_PROVIDER,
+            "available": False,
+            "model": None,
+        }

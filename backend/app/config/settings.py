@@ -39,6 +39,19 @@ class Settings(BaseSettings):
     USE_GPU: bool = False
     MAX_DOCUMENT_SIZE_MB: int = 10
     SUPPORTED_FORMATS: List[str] = ["pdf", "docx"]
+
+    # LLM (Llama) Configuration
+    LLM_PROVIDER: str = "llama_cpp"        # "llama_cpp", "transformers", or "none" (rule-based fallback)
+    LLAMA_MODEL_PATH: str = ""             # Path to .gguf model file (for llama_cpp)
+    LLAMA_MODEL_REPO: str = "TheBloke/Llama-2-7B-Chat-GGUF"   # HF repo to auto-download from
+    LLAMA_MODEL_FILE: str = "llama-2-7b-chat.Q4_K_M.gguf"     # Specific GGUF file name
+    LLAMA_HF_MODEL: str = "meta-llama/Llama-2-7b-chat-hf"     # For transformers provider
+    LLAMA_CONTEXT_LENGTH: int = 4096
+    LLAMA_MAX_TOKENS: int = 1024
+    LLAMA_TEMPERATURE: float = 0.3
+    LLAMA_TOP_P: float = 0.9
+    LLAMA_N_GPU_LAYERS: int = 0            # Number of layers to offload to GPU (0 = CPU only)
+    LLAMA_N_THREADS: int = 4               # CPU threads for inference
     
     # Document Processing
     TEMP_UPLOAD_DIR: str = "./temp_uploads"

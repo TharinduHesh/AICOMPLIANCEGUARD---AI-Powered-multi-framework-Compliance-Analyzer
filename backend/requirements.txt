@@ -19,6 +19,10 @@ numpy>=1.26.3
 pandas>=2.2.0
 sentence-transformers>=2.3.1
 
+# LLM (Llama)
+llama-cpp-python>=0.2.0
+huggingface_hub>=0.20.0
+
 # Security & Encryption
 cryptography>=42.0.2
 pycryptodome>=3.20.0

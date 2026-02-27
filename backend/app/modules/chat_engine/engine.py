@@ -36,6 +36,7 @@ class ComplianceChatEngine:
         self._nlp_engine = None
         self._document_processor = None
         self._cia_validator = None
+        self._llm = None
 
     # ------------------------------------------------------------------
     # Lazy accessors
@@ -69,6 +70,21 @@ class ComplianceChatEngine:
             except Exception as e:
                 logger.warning(f"CIA validator not available: {e}")
         return self._cia_validator
+
+    @property
+    def llm(self):
+        """Lazy-load the Llama LLM provider."""
+        if self._llm is None:
+            try:
+                from app.modules.llm_provider import llm_provider
+                if llm_provider.is_available:
+                    self._llm = llm_provider
+                    logger.info("LLM provider connected to chat engine")
+                else:
+                    logger.info("LLM provider not available — using rule-based responses")
+            except Exception as e:
+                logger.warning(f"LLM provider not available: {e}")
+        return self._llm
 
     # ------------------------------------------------------------------
     # Framework data
@@ -266,7 +282,7 @@ class ComplianceChatEngine:
         if self._is_general_question(msg_lower):
             return self._answer_general_question(msg_lower)
 
-        # Default: try to answer about the document
+        # Default: try LLM-powered contextual answer, then rule-based fallback
         return self._contextual_answer(conv, message)
 
     # ------------------------------------------------------------------
@@ -345,7 +361,7 @@ class ComplianceChatEngine:
                 "What would you like to know?"
             )
         return (
-            "Hello! 👋 I'm your **AI Compliance Assistant**.\n\n"
+            "Hello! 👋 I'm your **AI Compliance Guard**.\n\n"
             "I can help you analyze compliance documents against standards like "
             "ISO 27001, ISO 9001, NIST CSF, and GDPR/PDPA.\n\n"
             "**To get started**, upload a PDF or DOCX document using the attachment button, "
@@ -679,7 +695,19 @@ class ComplianceChatEngine:
         return recs
 
     def _answer_general_question(self, msg: str) -> str:
-        """Answer general compliance questions without document context."""
+        """Answer general compliance questions — LLM or canned responses."""
+        # ── Try LLM for open-ended questions ──
+        if self.llm is not None:
+            try:
+                return self.llm.generate(
+                    messages=[{"role": "user", "content": msg}],
+                    context_info="The user has NOT uploaded a document yet. Answer the general compliance question.",
+                    max_tokens=512,
+                )
+            except Exception as e:
+                logger.error(f"LLM general-question error: {e}")
+
+        # ── Rule-based fallback ──
         responses = {
             'iso 27001': (
                 "## ISO/IEC 27001:2022\n\n"
@@ -763,13 +791,10 @@ class ComplianceChatEngine:
         )
 
     def _contextual_answer(self, conv: Dict, message: str) -> str:
-        """Try to answer using document context and NLP matching."""
+        """Try LLM first, then fall back to keyword matching."""
         clauses = conv.get('document_clauses', [])
 
-        if not clauses:
-            return self._answer_general_question(message.lower())
-
-        # Try to find relevant clauses using keyword matching
+        # Gather relevant clauses via keyword scoring
         msg_lower = message.lower()
         words = set(re.findall(r'\b\w{4,}\b', msg_lower))
 
@@ -780,10 +805,52 @@ class ComplianceChatEngine:
             overlap = len(words & clause_words)
             if overlap > 0:
                 scored_clauses.append((overlap, clause))
-
         scored_clauses.sort(key=lambda x: x[0], reverse=True)
+        top_clauses = scored_clauses[:5]
 
-        if not scored_clauses:
+        # ── LLM path ──
+        if self.llm is not None:
+            context_parts = []
+            doc_name = conv.get('document_name', 'document')
+            context_parts.append(f"Document: {doc_name}")
+            context_parts.append(f"Total clauses: {len(clauses)}")
+            if top_clauses:
+                context_parts.append("\nRelevant clauses from the user's document:")
+                for _, cl in top_clauses:
+                    sec = cl.get('section', '?')
+                    txt = cl.get('text', '')[:300]
+                    context_parts.append(f"[Section {sec}]: {txt}")
+            else:
+                # Include first few clauses as general context
+                context_parts.append("\nFirst clauses from the document:")
+                for cl in clauses[:5]:
+                    sec = cl.get('section', '?')
+                    txt = cl.get('text', '')[:300]
+                    context_parts.append(f"[Section {sec}]: {txt}")
+
+            context_info = "\n".join(context_parts)
+
+            # Build conversation history for the LLM (last 6 messages)
+            history = conv.get('messages', [])[-6:]
+            llm_messages = [{"role": m["role"], "content": m["content"]} for m in history]
+            # Ensure the current user message is the last one
+            if not llm_messages or llm_messages[-1]["content"] != message:
+                llm_messages.append({"role": "user", "content": message})
+
+            try:
+                return self.llm.generate(
+                    messages=llm_messages,
+                    context_info=context_info,
+                )
+            except Exception as e:
+                logger.error(f"LLM generation error: {e}")
+                # Fall through to rule-based
+
+        # ── Rule-based fallback ──
+        if not clauses:
+            return self._answer_general_question(message.lower())
+
+        if not top_clauses:
             return (
                 "I couldn't find specific content in your document related to that question.\n\n"
                 "Try asking:\n"
@@ -797,7 +864,7 @@ class ComplianceChatEngine:
             f"## 📋 Relevant Findings from Your Document\n",
             f"Based on your question, here are the most relevant clauses:\n",
         ]
-        for score, clause in scored_clauses[:5]:
+        for score, clause in top_clauses:
             text = clause.get('text', '')[:200]
             section = clause.get('section', '?')
             lines.append(f"**Section {section}:**")
