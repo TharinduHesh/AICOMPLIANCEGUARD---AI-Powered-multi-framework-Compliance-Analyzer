@@ -12,7 +12,7 @@ import logging
 
 from app.api.endpoints.auth import (
     verify_admin, verify_token,
-    _hash_password, _users, get_user,
+    _users, get_user,
     _fb_set_user, _fb_delete_user, _fb_list_users,
     _activity_log, record_activity,
 )
@@ -63,11 +63,9 @@ async def create_user(body: CreateUserRequest, token_data: dict = Depends(verify
     if cid.lower() in (k.lower() for k in _users):
         raise HTTPException(status_code=409, detail="Company ID already exists")
 
-    pw_hash, pw_salt = _hash_password(body.password)
     user_data = {
         "company_name": body.company_name.strip(),
-        "pw_hash": pw_hash,
-        "pw_salt": pw_salt,
+        "password": body.password,
         "role": body.role,
         "created_at": datetime.utcnow().isoformat(),
     }

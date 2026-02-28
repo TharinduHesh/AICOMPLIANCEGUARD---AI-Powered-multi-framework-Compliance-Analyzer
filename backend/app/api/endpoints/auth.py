@@ -118,21 +118,8 @@ def _fb_list_users() -> list:
         return []
 
 
-# ── Password hashing (PBKDF2-SHA256, no extra deps) ─────────
-def _hash_password(password: str, salt: str = None) -> tuple:
-    """Returns (hash_hex, salt_hex)"""
-    if salt is None:
-        salt = secrets.token_hex(16)
-    h = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 260_000)
-    return h.hex(), salt
-
-def _verify_password(password: str, stored_hash: str, salt: str) -> bool:
-    h = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 260_000)
-    return secrets.compare_digest(h.hex(), stored_hash)
-
-
 # ── In-memory user store (mirror of Firebase) ───────────────
-# { company_id: { company_name, pw_hash, pw_salt, role, created_at } }
+# { company_id: { company_name, password, role, created_at } }
 _users: Dict[str, dict] = {}
 
 # Admin credentials
@@ -143,11 +130,9 @@ ADMIN_PASSWORD = "@Admin123"
 def _seed_admin():
     """Ensure admin account exists in memory + Firebase"""
     if ADMIN_EMAIL not in _users:
-        pw_hash, pw_salt = _hash_password(ADMIN_PASSWORD)
         admin_data = {
             "company_name": "ACG Admin",
-            "pw_hash": pw_hash,
-            "pw_salt": pw_salt,
+            "password": ADMIN_PASSWORD,
             "role": "admin",
             "created_at": datetime.utcnow().isoformat(),
         }
@@ -229,7 +214,7 @@ async def login(data: UserLogin):
     cid = data.company_id.strip()
     user = get_user(cid)
 
-    if not user or not _verify_password(data.password, user["pw_hash"], user["pw_salt"]):
+    if not user or data.password != user.get("password", ""):
         raise HTTPException(status_code=401, detail="Invalid Company ID or password")
 
     role = user.get("role", "user")
