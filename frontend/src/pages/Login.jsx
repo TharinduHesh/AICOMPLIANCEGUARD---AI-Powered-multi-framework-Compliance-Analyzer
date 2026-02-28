@@ -60,11 +60,11 @@ export default function Login({ onAuth }) {
 
       onAuth && onAuth()
 
-      // Redirect admin to admin dashboard, users to user dashboard
+      // Redirect admin to admin dashboard, users to chat
       if (role === 'admin') {
         navigate('/admin', { replace: true })
       } else {
-        navigate('/dashboard', { replace: true })
+        navigate('/chat', { replace: true })
       }
     } catch (err) {
       const msg = err?.response?.data?.detail

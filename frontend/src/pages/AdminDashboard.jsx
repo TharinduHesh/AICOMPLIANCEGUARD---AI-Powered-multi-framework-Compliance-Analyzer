@@ -54,6 +54,10 @@ import {
   LightMode as LightModeIcon,
   Chat as ChatIcon,
   Description as DocIcon,
+  FolderOpen as FolderIcon,
+  Visibility as ViewIcon,
+  Download as DownloadIcon,
+  InsertDriveFile as FileIcon,
 } from '@mui/icons-material'
 import { toast } from 'react-toastify'
 import { adminAPI } from '../services/api'
@@ -164,6 +168,18 @@ export default function AdminDashboard() {
   const [histPage, setHistPage] = useState(0)
   const [histRowsPerPage, setHistRowsPerPage] = useState(10)
 
+  // User Documents state
+  const [userDocs, setUserDocs] = useState([])
+  const [docsLoading, setDocsLoading] = useState(false)
+  const [docsSearch, setDocsSearch] = useState('')
+  const [docsFilter, setDocsFilter] = useState('all')
+  const [docsPage, setDocsPage] = useState(0)
+  const [docsRowsPerPage, setDocsRowsPerPage] = useState(10)
+
+  // Uploaded Files state (actual files on disk)
+  const [userFiles, setUserFiles] = useState([])
+  const [filesLoading, setFilesLoading] = useState(false)
+
   /* Auth guard */
   const currentUser = (() => {
     try { return JSON.parse(localStorage.getItem('user') || '{}') } catch { return {} }
@@ -194,11 +210,25 @@ export default function AdminDashboard() {
     finally { setHistLoading(false) }
   }, [histCategory])
 
-  useEffect(() => {
-    if (isAdmin) { fetchUsers(); fetchActivities(); fetchHistory() }
-  }, [isAdmin, fetchUsers, fetchActivities, fetchHistory])
+  const fetchUserDocs = useCallback(async () => {
+    setDocsLoading(true)
+    try { setUserDocs(await adminAPI.getUserDocuments(null, 500)) }
+    catch { /* silent */ }
+    finally { setDocsLoading(false) }
+  }, [])
 
-  const refreshAll = () => { fetchUsers(); fetchActivities(); fetchHistory() }
+  const fetchUserFiles = useCallback(async () => {
+    setFilesLoading(true)
+    try { setUserFiles(await adminAPI.getUserFiles()) }
+    catch { /* silent */ }
+    finally { setFilesLoading(false) }
+  }, [])
+
+  useEffect(() => {
+    if (isAdmin) { fetchUsers(); fetchActivities(); fetchHistory(); fetchUserDocs(); fetchUserFiles() }
+  }, [isAdmin, fetchUsers, fetchActivities, fetchHistory, fetchUserDocs, fetchUserFiles])
+
+  const refreshAll = () => { fetchUsers(); fetchActivities(); fetchHistory(); fetchUserDocs(); fetchUserFiles() }
 
   /* ── Add user ──────────────────────────────────────────── */
   const handleOpenAdd = () => {
@@ -334,6 +364,7 @@ export default function AdminDashboard() {
       <Paper elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, overflow: 'hidden' }}>
         <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ px: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
           <Tab icon={<PersonIcon />} iconPosition="start" label="User Management" sx={{ textTransform: 'none', fontWeight: 600 }} />
+          <Tab icon={<FolderIcon />} iconPosition="start" label="User Documents" sx={{ textTransform: 'none', fontWeight: 600 }} />
           <Tab icon={<HistoryIcon />} iconPosition="start" label="User Activities" sx={{ textTransform: 'none', fontWeight: 600 }} />
           <Tab icon={<DocIcon />} iconPosition="start" label="History" sx={{ textTransform: 'none', fontWeight: 600 }} />
         </Tabs>
@@ -438,8 +469,151 @@ export default function AdminDashboard() {
           </Box>
         )}
 
-        {/* ────────────── TAB 1: User Activities ─────────── */}
+        {/* ────────────── TAB 1: User Documents ─────────── */}
         {tab === 1 && (
+          <Box sx={{ p: 2 }}>
+            {/* ── Uploaded Files Section ── */}
+            <Typography variant="h6" fontWeight={600} sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+              <FileIcon color="primary" /> Uploaded Files
+            </Typography>
+
+            {/* Search bar for files */}
+            <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+              <TextField
+                size="small" placeholder="Search user or filename..."
+                value={docsSearch} onChange={e => { setDocsSearch(e.target.value); setDocsPage(0) }}
+                InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }}
+                sx={{ minWidth: 260 }}
+              />
+              <Typography variant="body2" color="text.secondary" sx={{ ml: 'auto' }}>
+                {(() => {
+                  const q = docsSearch.toLowerCase()
+                  const f = userFiles.filter(d =>
+                    !q || d.user?.toLowerCase().includes(q) || d.company_name?.toLowerCase().includes(q) || d.filename?.toLowerCase().includes(q)
+                  )
+                  return `${f.length} files`
+                })()}
+              </Typography>
+            </Box>
+
+            <TableContainer>
+              {filesLoading ? (
+                <Box sx={{ p: 4, textAlign: 'center' }}><CircularProgress /></Box>
+              ) : (
+                (() => {
+                  const q = docsSearch.toLowerCase()
+                  const filtered = userFiles.filter(d =>
+                    !q || d.user?.toLowerCase().includes(q) || d.company_name?.toLowerCase().includes(q) || d.filename?.toLowerCase().includes(q)
+                  )
+                  return (
+                    <>
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow sx={{ bgcolor: theadBg }}>
+                            <TableCell sx={{ fontWeight: 700, width: 40 }}>#</TableCell>
+                            <TableCell sx={{ fontWeight: 700 }}>User</TableCell>
+                            <TableCell sx={{ fontWeight: 700 }}>Company</TableCell>
+                            <TableCell sx={{ fontWeight: 700 }}>File Name</TableCell>
+                            <TableCell sx={{ fontWeight: 700 }}>Size</TableCell>
+                            <TableCell sx={{ fontWeight: 700 }}>Uploaded At</TableCell>
+                            <TableCell sx={{ fontWeight: 700 }} align="center">Actions</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {filtered.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={7} align="center">
+                                <Box sx={{ py: 4, textAlign: 'center' }}>
+                                  <FolderIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 1 }} />
+                                  <Typography color="text.secondary">No uploaded files found</Typography>
+                                  <Typography variant="caption" color="text.secondary">
+                                    Files will appear here when users upload documents via the chat
+                                  </Typography>
+                                </Box>
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            filtered
+                              .slice(docsPage * docsRowsPerPage, docsPage * docsRowsPerPage + docsRowsPerPage)
+                              .map((f, idx) => {
+                                const sizeKB = (f.size_bytes / 1024).toFixed(1)
+                                const sizeMB = (f.size_bytes / (1024 * 1024)).toFixed(2)
+                                const sizeLabel = f.size_bytes > 1024 * 1024 ? `${sizeMB} MB` : `${sizeKB} KB`
+                                const ext = f.filename?.split('.').pop()?.toLowerCase() || ''
+                                const isPDF = ext === 'pdf'
+                                return (
+                                  <TableRow key={idx} hover>
+                                    <TableCell>{docsPage * docsRowsPerPage + idx + 1}</TableCell>
+                                    <TableCell>
+                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <Avatar sx={{ width: 26, height: 26, fontSize: 12, bgcolor: 'primary.main' }}>
+                                          {f.user?.charAt(0)?.toUpperCase() || '?'}
+                                        </Avatar>
+                                        <strong>{f.user}</strong>
+                                      </Box>
+                                    </TableCell>
+                                    <TableCell>{f.company_name || '—'}</TableCell>
+                                    <TableCell>
+                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                        <Chip
+                                          label={isPDF ? 'PDF' : ext.toUpperCase()}
+                                          size="small"
+                                          color={isPDF ? 'error' : 'info'}
+                                          variant="outlined"
+                                          sx={{ fontSize: 10, height: 20, mr: 0.5 }}
+                                        />
+                                        <Typography variant="body2" noWrap sx={{ maxWidth: 260 }}>
+                                          {f.filename}
+                                        </Typography>
+                                      </Box>
+                                    </TableCell>
+                                    <TableCell>
+                                      <Typography variant="body2">{sizeLabel}</Typography>
+                                    </TableCell>
+                                    <TableCell>
+                                      <Typography variant="body2" color="text.secondary">
+                                        {fmtDate(f.uploaded_at)}
+                                      </Typography>
+                                    </TableCell>
+                                    <TableCell align="center">
+                                      <Tooltip title="Download file">
+                                        <IconButton
+                                          size="small"
+                                          color="primary"
+                                          onClick={() => {
+                                            const url = adminAPI.downloadUserFile(f.user, f.stored_name)
+                                            window.open(url, '_blank')
+                                          }}
+                                        >
+                                          <DownloadIcon fontSize="small" />
+                                        </IconButton>
+                                      </Tooltip>
+                                    </TableCell>
+                                  </TableRow>
+                                )
+                              })
+                          )}
+                        </TableBody>
+                      </Table>
+                      <TablePagination
+                        component="div"
+                        count={filtered.length}
+                        page={docsPage}
+                        onPageChange={(_, p) => setDocsPage(p)}
+                        rowsPerPage={docsRowsPerPage}
+                        onRowsPerPageChange={e => { setDocsRowsPerPage(parseInt(e.target.value, 10)); setDocsPage(0) }}
+                        rowsPerPageOptions={[10, 25, 50]}
+                      />
+                    </>
+                  )
+                })()
+              )}
+            </TableContainer>
+          </Box>
+        )}
+
+        {/* ────────────── TAB 2: User Activities ─────────── */}
+        {tab === 2 && (
           <Box sx={{ p: 2 }}>
             {/* Toolbar */}
             <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -543,8 +717,8 @@ export default function AdminDashboard() {
           </Box>
         )}
 
-        {/* ────────────── TAB 2: History ─────────────────── */}
-        {tab === 2 && (
+        {/* ────────────── TAB 3: History ─────────────────── */}
+        {tab === 3 && (
           <Box sx={{ p: 2 }}>
             {/* Toolbar */}
             <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>

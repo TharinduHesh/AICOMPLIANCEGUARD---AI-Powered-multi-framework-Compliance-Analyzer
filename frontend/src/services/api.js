@@ -153,6 +153,25 @@ export const adminAPI = {
     const response = await api.get('/admin/history', { params })
     return response.data
   },
+
+  getUserDocuments: async (user = null, limit = 200) => {
+    const params = { limit }
+    if (user) params.user = user
+    const response = await api.get('/admin/user-documents', { params })
+    return response.data
+  },
+
+  getUserFiles: async (user = null) => {
+    const params = {}
+    if (user) params.user = user
+    const response = await api.get('/admin/user-files', { params })
+    return response.data
+  },
+
+  downloadUserFile: (userId, storedName) => {
+    const token = localStorage.getItem('token')
+    return `${API_BASE_URL}/admin/user-files/download?user=${encodeURIComponent(userId)}&filename=${encodeURIComponent(storedName)}&token=${token}`
+  },
 }
 
 export default api

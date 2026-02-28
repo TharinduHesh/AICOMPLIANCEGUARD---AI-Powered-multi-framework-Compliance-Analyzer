@@ -156,13 +156,20 @@ class DocumentProcessor:
         Returns:
             Cleaned text
         """
-        # Remove multiple spaces
-        text = re.sub(r'\s+', ' ', text)
+        # Normalize line endings
+        text = text.replace('\r\n', '\n').replace('\r', '\n')
         
-        # Remove multiple newlines
-        text = re.sub(r'\n+', '\n', text)
+        # Remove multiple spaces (but NOT newlines)
+        text = re.sub(r'[^\S\n]+', ' ', text)
         
-        # Remove leading/trailing whitespace
+        # Collapse 3+ consecutive newlines into 2
+        text = re.sub(r'\n{3,}', '\n\n', text)
+        
+        # Remove leading/trailing whitespace per line
+        lines = [line.strip() for line in text.split('\n')]
+        text = '\n'.join(lines)
+        
+        # Remove leading/trailing whitespace overall
         text = text.strip()
         
         return text
@@ -286,6 +293,17 @@ class DocumentProcessor:
         
         # Extract clauses
         clauses = self.extract_clauses(sections)
+        
+        # Fallback: if no clauses found, split by sentences
+        if not clauses and cleaned_text.strip():
+            logger.info("No clauses from section parser — falling back to sentence split")
+            sentences = re.split(r'(?<=[.!?])\s+', cleaned_text)
+            for i, s in enumerate(sentences):
+                s = s.strip()
+                if len(s) > 20:
+                    clauses.append({'section': f'Paragraph {i+1}', 'text': s, 'length': len(s)})
+            if not sections:
+                sections = [{'header': 'Document Content', 'content': cleaned_text}]
         
         logger.info(f"Document processed: {len(sections)} sections, {len(clauses)} clauses")
         

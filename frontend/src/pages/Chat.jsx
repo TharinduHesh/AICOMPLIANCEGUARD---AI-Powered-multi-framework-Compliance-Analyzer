@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
+import { useNavigate } from 'react-router-dom'
 import { chatAPI } from '../services/api'
 import { useTheme } from '../ThemeContext'
 
@@ -40,7 +41,7 @@ function ThemeToggle({ isDark, onToggle, t }) {
 }
 
 /* ── Sidebar ──────────────────────────────────────────────────── */
-function Sidebar({ conversations, activeId, onSelect, onNew, onDelete, collapsed, onClose, user, onLogout, t, isDark, onToggleTheme, onOpenSettings }) {
+function Sidebar({ conversations, activeId, onSelect, onNew, onDelete, collapsed, onClose, user, onLogout, t, isDark, onToggleTheme, onOpenSettings, onNavigate }) {
   const [searchOpen, setSearchOpen] = React.useState(false)
   const [searchQuery, setSearchQuery] = React.useState('')
   const searchInputRef = React.useRef(null)
@@ -64,7 +65,7 @@ function Sidebar({ conversations, activeId, onSelect, onNew, onDelete, collapsed
     <div style={{
       width: collapsed ? 0 : 260,
       minWidth: collapsed ? 0 : 260,
-      height: '100vh',
+      height: '100%',
       backgroundColor: t.bgSidebar,
       borderRight: `1px solid ${t.border}`,
       display: 'flex',
@@ -927,6 +928,7 @@ function ActionChips({ onSend, hasDoc, t }) {
    ================================================================ */
 export default function Chat({ onLogout }) {
   const { theme: t, isDark, toggle: toggleTheme } = useTheme()
+  const navigate = useNavigate()
 
   const [conversations, setConversations] = useState([])
   const [activeConvId, setActiveConvId] = useState(null)
@@ -1194,11 +1196,21 @@ export default function Chat({ onLogout }) {
   }
 
   const isEmpty = messages.length === 0
+  const userRole = (() => { try { return JSON.parse(localStorage.getItem('user'))?.role } catch { return 'user' } })()
+  const isFullScreen = userRole !== 'admin'
 
   /* ══════════════════════════════════════════════════════════════ */
   return (
     <>
-    <div style={{ display: 'flex', height: '100vh', width: '100vw', backgroundColor: t.bg, overflow: 'hidden', position: 'fixed', top: 0, left: 0, zIndex: 9999 }}>
+    <div style={{
+      display: 'flex',
+      backgroundColor: t.bg,
+      overflow: 'hidden',
+      ...(isFullScreen
+        ? { height: '100vh', width: '100vw', position: 'fixed', top: 0, left: 0, zIndex: 9999 }
+        : { height: '100%', width: '100%' }
+      ),
+    }}>
 
       {/* Dynamic styles */}
       <style>{`
@@ -1244,10 +1256,11 @@ export default function Chat({ onLogout }) {
         isDark={isDark}
         onToggleTheme={toggleTheme}
         onOpenSettings={() => setSettingsOpen(true)}
+        onNavigate={(path) => navigate(path)}
       />
 
       {/* ── Main area ─────────────────────── */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100vh' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
 
         {/* Top bar */}
         <div style={{

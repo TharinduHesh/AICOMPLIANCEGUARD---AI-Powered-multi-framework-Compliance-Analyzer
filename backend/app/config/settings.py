@@ -55,6 +55,7 @@ class Settings(BaseSettings):
     
     # Document Processing
     TEMP_UPLOAD_DIR: str = "./temp_uploads"
+    USER_UPLOADS_DIR: str = "./user_uploads"
     AUTO_DELETE_AFTER_MINUTES: int = 5
     
     # Compliance Frameworks
@@ -87,6 +88,7 @@ settings = Settings()
 
 # Ensure directories exist
 Path(settings.TEMP_UPLOAD_DIR).mkdir(parents=True, exist_ok=True)
+Path(settings.USER_UPLOADS_DIR).mkdir(parents=True, exist_ok=True)
 Path(settings.MODEL_CACHE_DIR).mkdir(parents=True, exist_ok=True)
 Path(settings.FRAMEWORKS_DATA_DIR).mkdir(parents=True, exist_ok=True)
 Path("logs").mkdir(exist_ok=True)

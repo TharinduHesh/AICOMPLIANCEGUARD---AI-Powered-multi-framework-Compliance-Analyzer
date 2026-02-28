@@ -5,10 +5,13 @@ Only the admin account can access these endpoints.
 """
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import datetime
 import logging
+import os
+from pathlib import Path
 
 from app.api.endpoints.auth import (
     verify_admin, verify_token,
@@ -18,6 +21,9 @@ from app.api.endpoints.auth import (
 )
 from app.modules.security_layer import security_layer
 from app.modules.firebase_storage import firebase_storage
+from app.config.settings import settings
+
+from jose import jwt, JWTError
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -151,6 +157,145 @@ async def admin_history(
             "role": udata.get("role", "user"),
         })
     return enriched
+
+
+# ── User Documents — admin can view all user uploads & analyses ──
+@router.get("/user-documents")
+async def list_user_documents(
+    user: Optional[str] = None,
+    limit: int = 200,
+    token_data: dict = Depends(verify_admin),
+):
+    """
+    Return all document upload and analysis activities for every user.
+    Admin can filter by a specific user company_id.
+    Each entry includes user, filename, frameworks, timestamp, and status.
+    """
+    # Gather upload & analysis records from activity log
+    upload_map = {}   # keyed by "user|detail" to de-dup
+    for entry in _activity_log:
+        uid = entry.get("user", "")
+        action = entry.get("action", "")
+        if action not in ("upload", "analysis"):
+            continue
+        if user and uid != user:
+            continue
+
+        detail = entry.get("detail", "")
+        ts = entry.get("timestamp", "")
+        udata = _users.get(uid, {})
+
+        if action == "upload":
+            filename = detail.replace("Uploaded ", "") if detail.startswith("Uploaded ") else detail
+            key = f"{uid}|{filename}|upload"
+            if key not in upload_map:
+                upload_map[key] = {
+                    "user": uid,
+                    "company_name": udata.get("company_name", uid),
+                    "role": udata.get("role", "user"),
+                    "action": "upload",
+                    "filename": filename,
+                    "frameworks": [],
+                    "timestamp": ts,
+                }
+        elif action == "analysis":
+            # Extract frameworks from detail like "Analyzed document (frameworks: iso27001, nist)"
+            frameworks = []
+            if "frameworks:" in detail:
+                fw_str = detail.split("frameworks:")[-1].strip().rstrip(")")
+                frameworks = [f.strip() for f in fw_str.split(",") if f.strip()]
+            key = f"{uid}|analysis|{ts}"
+            upload_map[key] = {
+                "user": uid,
+                "company_name": udata.get("company_name", uid),
+                "role": udata.get("role", "user"),
+                "action": "analysis",
+                "filename": detail,
+                "frameworks": frameworks,
+                "timestamp": ts,
+            }
+
+    docs = sorted(upload_map.values(), key=lambda d: d.get("timestamp", ""), reverse=True)
+    return docs[:limit]
+
+
+# ── User Uploaded Files — admin can browse actual files on disk ──
+@router.get("/user-files")
+async def list_user_files(
+    user: Optional[str] = None,
+    token_data: dict = Depends(verify_admin),
+):
+    """
+    Return a listing of all uploaded files stored on disk,
+    grouped by user.
+    """
+    uploads_root = Path(settings.USER_UPLOADS_DIR)
+    result = []
+
+    if not uploads_root.exists():
+        return result
+
+    for user_dir in sorted(uploads_root.iterdir()):
+        if not user_dir.is_dir():
+            continue
+        uid = user_dir.name
+        if user and uid != user:
+            continue
+        udata = _users.get(uid, {})
+
+        for fpath in sorted(user_dir.iterdir(), reverse=True):
+            if fpath.is_file():
+                stat = fpath.stat()
+                # filename on disk: 20260228_193000_report.pdf
+                orig_name = "_".join(fpath.name.split("_")[2:]) if fpath.name.count("_") >= 2 else fpath.name
+                result.append({
+                    "user": uid,
+                    "company_name": udata.get("company_name", uid),
+                    "filename": orig_name,
+                    "stored_name": fpath.name,
+                    "size_bytes": stat.st_size,
+                    "uploaded_at": datetime.utcfromtimestamp(stat.st_mtime).isoformat(),
+                })
+
+    return result
+
+
+@router.get("/user-files/download")
+async def download_user_file(
+    user: str = "",
+    filename: str = "",
+    token: str = "",
+):
+    """
+    Download a specific user's uploaded file.
+    Accepts JWT token as a query param (for direct browser downloads).
+    """
+    # Verify admin via query-param token
+    if not token:
+        raise HTTPException(status_code=401, detail="Token required")
+    try:
+        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        if payload.get("role") != "admin":
+            raise HTTPException(status_code=403, detail="Admin access required")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    if not user or not filename:
+        raise HTTPException(status_code=400, detail="user and filename are required")
+
+    file_path = Path(settings.USER_UPLOADS_DIR) / user / filename
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    # Determine media type
+    ext = file_path.suffix.lower()
+    media_type = "application/pdf" if ext == ".pdf" else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
+    return FileResponse(
+        path=str(file_path),
+        media_type=media_type,
+        filename=filename,
+    )
 
 
 # ── System endpoints (unchanged) ────────────────────────────

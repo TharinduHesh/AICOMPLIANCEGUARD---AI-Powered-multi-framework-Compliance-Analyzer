@@ -41,23 +41,31 @@ function App() {
   const userRole = (() => {
     try { return JSON.parse(localStorage.getItem('user') || '{}').role } catch { return 'user' }
   })()
-  const defaultRoute = userRole === 'admin' ? '/admin' : '/dashboard'
+  const defaultRoute = userRole === 'admin' ? '/admin' : '/chat'
+  const isAdmin = userRole === 'admin'
 
   return (
     <ThemeProvider>
       <Routes>
-        {/* Chat is full-screen — no Layout wrapper */}
         <Route path="/" element={<Navigate to={defaultRoute} replace />} />
-        <Route path="/chat" element={<Chat onLogout={handleLogout} />} />
 
-        {/* Other pages keep the Layout */}
-        <Route path="/dashboard" element={<Layout><UserDashboard /></Layout>} />
-        <Route path="/upload" element={<Layout><UploadDocument /></Layout>} />
-        <Route path="/results/:analysisId" element={<Layout><AnalysisResults /></Layout>} />
-        <Route path="/frameworks" element={<Layout><Frameworks /></Layout>} />
-        <Route path="/history" element={<Layout><History /></Layout>} />
-        <Route path="/admin" element={<Layout><AdminDashboard /></Layout>} />
-        <Route path="/about" element={<Layout><About /></Layout>} />
+        {/* Users only get the full-screen Chat page (no navbar) */}
+        <Route path="/chat" element={
+          isAdmin
+            ? <Layout onLogout={handleLogout}><Chat onLogout={handleLogout} /></Layout>
+            : <Chat onLogout={handleLogout} />
+        } />
+
+        {/* Admin pages — wrapped in Layout with navbar */}
+        <Route path="/dashboard" element={isAdmin ? <Layout onLogout={handleLogout}><UserDashboard /></Layout> : <Navigate to="/chat" replace />} />
+        <Route path="/upload" element={isAdmin ? <Layout onLogout={handleLogout}><UploadDocument /></Layout> : <Navigate to="/chat" replace />} />
+        <Route path="/results/:analysisId" element={isAdmin ? <Layout onLogout={handleLogout}><AnalysisResults /></Layout> : <Navigate to="/chat" replace />} />
+        <Route path="/frameworks" element={isAdmin ? <Layout onLogout={handleLogout}><Frameworks /></Layout> : <Navigate to="/chat" replace />} />
+        <Route path="/history" element={isAdmin ? <Layout onLogout={handleLogout}><History /></Layout> : <Navigate to="/chat" replace />} />
+        <Route path="/about" element={isAdmin ? <Layout onLogout={handleLogout}><About /></Layout> : <Navigate to="/chat" replace />} />
+
+        {/* Admin-only route */}
+        <Route path="/admin" element={isAdmin ? <Layout onLogout={handleLogout}><AdminDashboard /></Layout> : <Navigate to="/chat" replace />} />
       </Routes>
       <ToastContainer
         position="top-right"

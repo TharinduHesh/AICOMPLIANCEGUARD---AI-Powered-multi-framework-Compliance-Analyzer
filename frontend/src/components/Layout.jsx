@@ -22,6 +22,7 @@ import {
   createTheme,
 } from '@mui/material'
 import MenuIcon from '@mui/icons-material/Menu'
+import LogoutIcon from '@mui/icons-material/Logout'
 import SecurityIcon from '@mui/icons-material/Security'
 import ChatIcon from '@mui/icons-material/Chat'
 import DashboardIcon from '@mui/icons-material/Dashboard'
@@ -30,26 +31,42 @@ import AssessmentIcon from '@mui/icons-material/Assessment'
 import HistoryIcon from '@mui/icons-material/History'
 import InfoIcon from '@mui/icons-material/Info'
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
+import { useNavigate } from 'react-router-dom'
 import { useTheme as useAppTheme } from '../ThemeContext'
 
-const allPages = [
+/* Admin sees ALL pages (full control). Users see everything except Admin. */
+const adminPages = [
+  { name: 'Admin Panel', path: '/admin', icon: <AdminPanelSettingsIcon /> },
   { name: 'AI Chat', path: '/chat', icon: <ChatIcon /> },
   { name: 'Dashboard', path: '/dashboard', icon: <DashboardIcon /> },
+  { name: 'Frameworks', path: '/frameworks', icon: <AssessmentIcon /> },
+  { name: 'History', path: '/history', icon: <HistoryIcon /> },
+  { name: 'About', path: '/about', icon: <InfoIcon /> },
+]
+
+const userPages = [
+  { name: 'Dashboard', path: '/dashboard', icon: <DashboardIcon /> },
+  { name: 'AI Chat', path: '/chat', icon: <ChatIcon /> },
   { name: 'Upload Document', path: '/upload', icon: <UploadFileIcon /> },
   { name: 'Frameworks', path: '/frameworks', icon: <AssessmentIcon /> },
   { name: 'History', path: '/history', icon: <HistoryIcon /> },
   { name: 'About', path: '/about', icon: <InfoIcon /> },
-  { name: 'Admin', path: '/admin', icon: <AdminPanelSettingsIcon /> },
 ]
 
-function Layout({ children }) {
+function Layout({ children, onLogout }) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const location = useLocation()
+  const navigate = useNavigate()
   const userRole = (() => { try { return JSON.parse(localStorage.getItem('user'))?.role } catch { return null } })()
-  const pages = userRole === 'admin'
-    ? allPages.filter((p) => p.path !== '/upload' && p.path !== '/dashboard')
-    : allPages.filter((p) => p.path !== '/admin')
+  const pages = userRole === 'admin' ? adminPages : userPages
   const { isDark } = useAppTheme()
+
+  const handleLogout = () => {
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    if (onLogout) onLogout()
+    navigate('/')
+  }
 
   const muiTheme = useMemo(() => createTheme({
     palette: {
@@ -113,6 +130,17 @@ function Layout({ children }) {
           </ListItem>
         ))}
       </List>
+      <Divider sx={{ borderColor: footerBorder }} />
+      <List>
+        <ListItem
+          button
+          onClick={handleLogout}
+          sx={{ color: 'white', '&:hover': { backgroundColor: '#334155' } }}
+        >
+          <ListItemIcon sx={{ color: 'white' }}><LogoutIcon /></ListItemIcon>
+          <ListItemText primary="Logout" />
+        </ListItem>
+      </List>
     </Box>
   )
 
@@ -173,6 +201,19 @@ function Layout({ children }) {
                 </Button>
               ))}
             </Box>
+
+            <Button
+              onClick={handleLogout}
+              startIcon={<LogoutIcon />}
+              sx={{
+                color: 'white',
+                textTransform: 'none',
+                ml: 1,
+                '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' },
+              }}
+            >
+              Logout
+            </Button>
           </Toolbar>
         </Container>
       </AppBar>
@@ -197,29 +238,36 @@ function Layout({ children }) {
         {drawer}
       </Drawer>
 
-      <Box component="main" sx={{ flexGrow: 1, py: 3, backgroundColor: 'background.default' }}>
-        <Container maxWidth="xl">{children}</Container>
-      </Box>
-
-      <Box
-        component="footer"
-        sx={{
-          py: 3,
-          px: 2,
-          mt: 'auto',
-          backgroundColor: footerBg,
-          borderTop: `1px solid ${footerBorder}`,
-        }}
-      >
-        <Container maxWidth="xl">
-          <Typography variant="body2" sx={{ color: '#94a3b8' }} align="center">
-            © 2026 AIComplianceGuard - Secure AI-Powered Compliance Validation Platform
-          </Typography>
-          <Typography variant="caption" sx={{ color: '#64748b' }} align="center" display="block">
-            Built with ❤️ for secure compliance automation
-          </Typography>
-        </Container>
-      </Box>
+      {location.pathname === '/chat' ? (
+        <Box sx={{ flexGrow: 1, display: 'flex', overflow: 'hidden' }}>
+          {children}
+        </Box>
+      ) : (
+        <>
+          <Box component="main" sx={{ flexGrow: 1, py: 3, backgroundColor: 'background.default' }}>
+            <Container maxWidth="xl">{children}</Container>
+          </Box>
+          <Box
+            component="footer"
+            sx={{
+              py: 3,
+              px: 2,
+              mt: 'auto',
+              backgroundColor: footerBg,
+              borderTop: `1px solid ${footerBorder}`,
+            }}
+          >
+            <Container maxWidth="xl">
+              <Typography variant="body2" sx={{ color: '#94a3b8' }} align="center">
+                © 2026 AIComplianceGuard - Secure AI-Powered Compliance Validation Platform
+              </Typography>
+              <Typography variant="caption" sx={{ color: '#64748b' }} align="center" display="block">
+                Built with ❤️ for secure compliance automation
+              </Typography>
+            </Container>
+          </Box>
+        </>
+      )}
     </Box>
     </MuiThemeProvider>
   )

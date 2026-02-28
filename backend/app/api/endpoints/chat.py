@@ -64,10 +64,12 @@ async def upload_and_ask(
     message: str = Form(default="Analyze this document for compliance"),
     conversation_id: str = Form(default=""),
     frameworks: str = Form(default="iso27001"),
+    token_data: dict = Depends(verify_token),
 ):
     """
     Upload a document and ask a question about it in one step.
     """
+    user_id = token_data.get("sub", "unknown")
     try:
         conv_id = conversation_id or secrets.token_urlsafe(16)
 
@@ -84,11 +86,19 @@ async def upload_and_ask(
         if len(file_data) > settings.MAX_DOCUMENT_SIZE_MB * 1024 * 1024:
             raise HTTPException(status_code=400, detail=f"File too large. Max {settings.MAX_DOCUMENT_SIZE_MB}MB.")
 
-        # Save temp file
+        # Save temp file for processing
         temp_dir = Path(settings.TEMP_UPLOAD_DIR)
         temp_dir.mkdir(parents=True, exist_ok=True)
         temp_path = temp_dir / f"{conv_id}_{file.filename}"
         with open(temp_path, 'wb') as f:
+            f.write(file_data)
+
+        # Save permanent copy for admin viewing
+        uploads_dir = Path(settings.USER_UPLOADS_DIR) / user_id
+        uploads_dir.mkdir(parents=True, exist_ok=True)
+        ts_prefix = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        perm_path = uploads_dir / f"{ts_prefix}_{file.filename}"
+        with open(perm_path, 'wb') as f:
             f.write(file_data)
 
         # Attach document to conversation
@@ -102,6 +112,9 @@ async def upload_and_ask(
             os.remove(temp_path)
         except Exception:
             pass
+
+        record_activity(user_id, "upload", f"Uploaded {file.filename}")
+        record_activity(user_id, "analysis", f"Analyzed {file.filename} (frameworks: {frameworks})")
 
         return ChatWithDocumentResponse(
             conversation_id=conv_id,
@@ -123,10 +136,12 @@ async def upload_and_ask(
 async def upload_document_to_chat(
     file: UploadFile = File(...),
     conversation_id: str = Form(default=""),
+    token_data: dict = Depends(verify_token),
 ):
     """
     Upload a document to an existing or new conversation (without asking a question).
     """
+    user_id = token_data.get("sub", "unknown")
     try:
         conv_id = conversation_id or secrets.token_urlsafe(16)
 
@@ -145,9 +160,17 @@ async def upload_document_to_chat(
         with open(temp_path, 'wb') as f:
             f.write(file_data)
 
+        # Save permanent copy for admin viewing
+        uploads_dir = Path(settings.USER_UPLOADS_DIR) / user_id
+        uploads_dir.mkdir(parents=True, exist_ok=True)
+        ts_prefix = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        perm_path = uploads_dir / f"{ts_prefix}_{file.filename}"
+        with open(perm_path, 'wb') as f:
+            f.write(file_data)
+
         doc_summary = chat_engine.attach_document(conv_id, str(temp_path), file.filename)
 
-        # Clean up
+        # Clean up temp file
         try:
             os.remove(temp_path)
         except Exception:
@@ -155,6 +178,8 @@ async def upload_document_to_chat(
 
         # Auto-generate a welcome message for the document
         welcome = chat_engine.chat(conv_id, "Give me a summary of this document")
+
+        record_activity(user_id, "upload", f"Uploaded {file.filename}")
 
         return {
             "conversation_id": conv_id,
