@@ -20,17 +20,20 @@ from app.models.schemas import (
 )
 from app.modules.chat_engine import chat_engine
 from app.config.settings import settings
+from app.api.endpoints.auth import verify_token, record_activity
+from fastapi import Depends
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
 @router.post("/message", response_model=ChatMessageResponse)
-async def send_message(request: ChatMessageRequest):
+async def send_message(request: ChatMessageRequest, token_data: dict = Depends(verify_token)):
     """
     Send a chat message and get AI compliance response.
     If conversation_id is empty a new conversation is created.
     """
+    user_id = token_data.get("sub", "unknown")
     try:
         conv_id = request.conversation_id or secrets.token_urlsafe(16)
 
@@ -51,6 +54,8 @@ async def send_message(request: ChatMessageRequest):
     except Exception as e:
         logger.error(f"Chat message error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to process message")
+    finally:
+        record_activity(user_id, "chat", f"Chat message: {request.message[:80]}")
 
 
 @router.post("/upload-and-ask", response_model=ChatWithDocumentResponse)

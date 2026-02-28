@@ -9,11 +9,6 @@ import numpy as np
 import json
 from pathlib import Path
 
-from transformers import AutoTokenizer, AutoModel
-from sentence_transformers import SentenceTransformer
-import torch
-from sklearn.metrics.pairwise import cosine_similarity
-
 from app.config.settings import settings
 
 logger = logging.getLogger(__name__)
@@ -29,7 +24,11 @@ class NLPComplianceEngine:
         self.model_name = "sentence-transformers/all-MiniLM-L6-v2"
         self.model = None
         self.frameworks_data = {}
-        self.device = "cuda" if settings.USE_GPU and torch.cuda.is_available() else "cpu"
+        try:
+            import torch
+            self.device = "cuda" if settings.USE_GPU and torch.cuda.is_available() else "cpu"
+        except ImportError:
+            self.device = "cpu"
         
         # Load model lazily
         self._load_model()
@@ -38,12 +37,13 @@ class NLPComplianceEngine:
     def _load_model(self):
         """Load sentence transformer model for semantic similarity"""
         try:
+            from sentence_transformers import SentenceTransformer
             logger.info(f"Loading NLP model: {self.model_name} on {self.device}")
             self.model = SentenceTransformer(self.model_name, device=self.device)
             logger.info("NLP model loaded successfully")
         except Exception as e:
             logger.error(f"Failed to load NLP model: {str(e)}")
-            raise
+            self.model = None
     
     def _load_frameworks(self):
         """Load compliance framework data"""
@@ -114,6 +114,7 @@ class NLPComplianceEngine:
         embedding1 = self.encode_text(text1)
         embedding2 = self.encode_text(text2)
         
+        from sklearn.metrics.pairwise import cosine_similarity
         similarity = cosine_similarity(
             embedding1.reshape(1, -1),
             embedding2.reshape(1, -1)
@@ -146,6 +147,7 @@ class NLPComplianceEngine:
         control_embeddings = self.encode_batch(control_texts)
         
         # Calculate similarities
+        from sklearn.metrics.pairwise import cosine_similarity
         similarities = cosine_similarity(
             clause_embedding.reshape(1, -1),
             control_embeddings
@@ -329,5 +331,18 @@ class NLPComplianceEngine:
         return weak_clauses[:10]  # Top 10
 
 
-# Singleton instance
-nlp_engine = NLPComplianceEngine()
+# Lazy singleton instance
+_nlp_engine_instance = None
+
+def _get_nlp_engine():
+    global _nlp_engine_instance
+    if _nlp_engine_instance is None:
+        _nlp_engine_instance = NLPComplianceEngine()
+    return _nlp_engine_instance
+
+class _LazyNLPEngine:
+    """Proxy that defers NLPComplianceEngine construction until first use."""
+    def __getattr__(self, name):
+        return getattr(_get_nlp_engine(), name)
+
+nlp_engine = _LazyNLPEngine()

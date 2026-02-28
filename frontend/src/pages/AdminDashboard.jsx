@@ -1,0 +1,728 @@
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import {
+  Box,
+  Typography,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Button,
+  TextField,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  IconButton,
+  Chip,
+  Alert,
+  CircularProgress,
+  MenuItem,
+  Grid,
+  Card,
+  CardContent,
+  Divider,
+  Tabs,
+  Tab,
+  Avatar,
+  Tooltip,
+  InputAdornment,
+  TablePagination,
+  ThemeProvider as MuiThemeProvider,
+  CssBaseline,
+  createTheme,
+} from '@mui/material'
+import {
+  Add as AddIcon,
+  Delete as DeleteIcon,
+  Refresh as RefreshIcon,
+  AdminPanelSettings as AdminIcon,
+  Person as PersonIcon,
+  Group as GroupIcon,
+  History as HistoryIcon,
+  Login as LoginIcon,
+  UploadFile as UploadIcon,
+  Assessment as AnalysisIcon,
+  PersonAdd as PersonAddIcon,
+  PersonRemove as PersonRemoveIcon,
+  Search as SearchIcon,
+  FilterList as FilterIcon,
+  AccessTime as TimeIcon,
+  DarkMode as DarkModeIcon,
+  LightMode as LightModeIcon,
+  Chat as ChatIcon,
+  Description as DocIcon,
+} from '@mui/icons-material'
+import { toast } from 'react-toastify'
+import { adminAPI } from '../services/api'
+import { useTheme as useAppTheme } from '../ThemeContext'
+
+/* ── Helpers ──────────────────────────────────────────────── */
+const fmtDate = (iso) => {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleDateString('en-US', {
+    year: 'numeric', month: 'short', day: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  })
+}
+
+const fmtRelative = (iso) => {
+  if (!iso) return 'Never'
+  const diff = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'Just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  return `${days}d ago`
+}
+
+const activityIcon = (action) => {
+  switch (action) {
+    case 'login': return <LoginIcon fontSize="small" color="success" />
+    case 'upload': return <UploadIcon fontSize="small" color="primary" />
+    case 'analysis': return <AnalysisIcon fontSize="small" color="warning" />
+    case 'create_user': return <PersonAddIcon fontSize="small" color="info" />
+    case 'delete_user': return <PersonRemoveIcon fontSize="small" color="error" />
+    default: return <HistoryIcon fontSize="small" color="disabled" />
+  }
+}
+
+const activityColor = (action) => {
+  const map = { login: 'success', upload: 'primary', analysis: 'warning', create_user: 'info', delete_user: 'error' }
+  return map[action] || 'default'
+}
+
+/* ── Main Component ───────────────────────────────────────── */
+export default function AdminDashboard() {
+  const { isDark, toggle: toggleTheme } = useAppTheme()
+
+  // Build a MUI theme that follows our app dark/light setting
+  const muiTheme = useMemo(() => createTheme({
+    palette: {
+      mode: isDark ? 'dark' : 'light',
+      ...(isDark ? {
+        background: { default: '#0f172a', paper: '#1e293b' },
+        text: { primary: '#e2e8f0', secondary: '#94a3b8' },
+        divider: '#334155',
+      } : {
+        background: { default: '#f8fafc', paper: '#ffffff' },
+        text: { primary: '#1e293b', secondary: '#475569' },
+        divider: '#e2e8f0',
+      }),
+      primary: { main: '#6366f1' },
+      success: { main: '#10b981' },
+      warning: { main: '#f59e0b' },
+      error:   { main: '#ef4444' },
+      info:    { main: '#0ea5e9' },
+    },
+    shape: { borderRadius: 10 },
+    typography: { fontFamily: '"Inter", "Segoe UI", Roboto, sans-serif' },
+    components: {
+      MuiPaper: { styleOverrides: { root: { backgroundImage: 'none' } } },
+      MuiTableCell: {
+        styleOverrides: {
+          root: {
+            borderColor: isDark ? '#334155' : '#e2e8f0',
+          },
+        },
+      },
+    },
+  }), [isDark])
+
+  const [tab, setTab] = useState(0)
+  const [users, setUsers] = useState([])
+  const [activities, setActivities] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [actLoading, setActLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  // Add-user dialog
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [formData, setFormData] = useState({ company_id: '', company_name: '', password: '', role: 'user' })
+  const [formError, setFormError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  // Delete dialog
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [selectedUser, setSelectedUser] = useState(null)
+
+  // Activity filters
+  const [actSearch, setActSearch] = useState('')
+  const [actFilter, setActFilter] = useState('all')
+  const [actPage, setActPage] = useState(0)
+  const [actRowsPerPage, setActRowsPerPage] = useState(10)
+
+  // History state
+  const [historyData, setHistoryData] = useState([])
+  const [histLoading, setHistLoading] = useState(false)
+  const [histCategory, setHistCategory] = useState('all')
+  const [histSearch, setHistSearch] = useState('')
+  const [histPage, setHistPage] = useState(0)
+  const [histRowsPerPage, setHistRowsPerPage] = useState(10)
+
+  /* Auth guard */
+  const currentUser = (() => {
+    try { return JSON.parse(localStorage.getItem('user') || '{}') } catch { return {} }
+  })()
+  const isAdmin = currentUser.role === 'admin'
+
+  /* ── Data fetchers ─────────────────────────────────────── */
+  const fetchUsers = useCallback(async () => {
+    setLoading(true); setError('')
+    try { setUsers(await adminAPI.listUsers()) }
+    catch (e) { setError(e?.response?.data?.detail || 'Failed to load users') }
+    finally { setLoading(false) }
+  }, [])
+
+  const fetchActivities = useCallback(async () => {
+    setActLoading(true)
+    try { setActivities(await adminAPI.listActivities(null, 500)) }
+    catch { /* silent */ }
+    finally { setActLoading(false) }
+  }, [])
+
+  const fetchHistory = useCallback(async () => {
+    setHistLoading(true)
+    try {
+      const cat = histCategory === 'all' ? null : histCategory
+      setHistoryData(await adminAPI.getHistory(cat, null, 500))
+    } catch { /* silent */ }
+    finally { setHistLoading(false) }
+  }, [histCategory])
+
+  useEffect(() => {
+    if (isAdmin) { fetchUsers(); fetchActivities(); fetchHistory() }
+  }, [isAdmin, fetchUsers, fetchActivities, fetchHistory])
+
+  const refreshAll = () => { fetchUsers(); fetchActivities(); fetchHistory() }
+
+  /* ── Add user ──────────────────────────────────────────── */
+  const handleOpenAdd = () => {
+    setFormData({ company_id: '', company_name: '', password: '', role: 'user' })
+    setFormError('')
+    setDialogOpen(true)
+  }
+
+  const handleAddUser = async () => {
+    const { company_id, company_name, password, role } = formData
+    if (!company_id.trim() || !company_name.trim() || !password) { setFormError('All fields are required'); return }
+    if (company_id.trim().length < 3) { setFormError('Company ID must be at least 3 characters'); return }
+    if (password.length < 6) { setFormError('Password must be at least 6 characters'); return }
+    setSubmitting(true); setFormError('')
+    try {
+      await adminAPI.createUser(company_id.trim(), company_name.trim(), password, role)
+      toast.success(`User "${company_id.trim()}" created successfully`)
+      setDialogOpen(false)
+      refreshAll()
+    } catch (e) { setFormError(e?.response?.data?.detail || 'Failed to create user') }
+    finally { setSubmitting(false) }
+  }
+
+  /* ── Delete user ───────────────────────────────────────── */
+  const handleDeleteClick = (u) => { setSelectedUser(u); setDeleteDialogOpen(true) }
+  const handleDeleteConfirm = async () => {
+    if (!selectedUser) return
+    try {
+      await adminAPI.deleteUser(selectedUser.company_id)
+      toast.success(`User "${selectedUser.company_id}" deleted`)
+      setDeleteDialogOpen(false); setSelectedUser(null)
+      refreshAll()
+    } catch (e) { toast.error(e?.response?.data?.detail || 'Failed to delete user') }
+  }
+
+  /* ── Access guard ──────────────────────────────────────── */
+  if (!isAdmin) {
+    return (
+      <MuiThemeProvider theme={muiTheme}>
+        <Box sx={{ py: 4 }}>
+          <Alert severity="error" variant="filled">Access Denied — Only administrators can access this page.</Alert>
+        </Box>
+      </MuiThemeProvider>
+    )
+  }
+
+  /* ── Computed ──────────────────────────────────────────── */
+  const adminCount = users.filter(u => u.role === 'admin').length
+  const userCount = users.filter(u => u.role === 'user').length
+  const onlineRecent = users.filter(u => {
+    if (!u.last_login) return false
+    return (Date.now() - new Date(u.last_login).getTime()) < 86400000 // 24h
+  }).length
+
+  // Filtered activities
+  const filteredActivities = activities.filter(a => {
+    if (actFilter !== 'all' && a.action !== actFilter) return false
+    if (actSearch && !a.user?.toLowerCase().includes(actSearch.toLowerCase()) &&
+        !a.detail?.toLowerCase().includes(actSearch.toLowerCase())) return false
+    return true
+  })
+
+  // Per-user activity counts
+  const userActivityMap = {}
+  activities.forEach(a => {
+    if (!userActivityMap[a.user]) userActivityMap[a.user] = { logins: 0, uploads: 0, analyses: 0, total: 0 }
+    userActivityMap[a.user].total++
+    if (a.action === 'login') userActivityMap[a.user].logins++
+    if (a.action === 'upload') userActivityMap[a.user].uploads++
+    if (a.action === 'analysis') userActivityMap[a.user].analyses++
+  })
+
+  // Stat-card palette — theme-aware backgrounds
+  const statCards = [
+    { icon: <GroupIcon />, value: users.length, label: 'Total Accounts', color: '#6366f1', bg: isDark ? '#1e1b4b' : '#eef2ff' },
+    { icon: <PersonIcon />, value: userCount, label: 'Users', color: '#0891b2', bg: isDark ? '#083344' : '#ecfeff' },
+    { icon: <AdminIcon />, value: adminCount, label: 'Admins', color: '#d97706', bg: isDark ? '#422006' : '#fffbeb' },
+    { icon: <TimeIcon />, value: onlineRecent, label: 'Active (24h)', color: '#16a34a', bg: isDark ? '#052e16' : '#f0fdf4' },
+  ]
+
+  const theadBg = isDark ? '#1e293b' : '#f1f5f9'
+
+  return (
+    <MuiThemeProvider theme={muiTheme}>
+    <CssBaseline />
+    <Box sx={{ minHeight: '100%' }}>
+      {/* Header */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <Avatar sx={{ bgcolor: 'primary.main', width: 48, height: 48 }}>
+            <AdminIcon fontSize="large" />
+          </Avatar>
+          <Box>
+            <Typography variant="h4" fontWeight={700}>Admin Dashboard</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Manage users and monitor all user activities
+            </Typography>
+          </Box>
+        </Box>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+          <Tooltip title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}>
+            <IconButton onClick={toggleTheme} size="small"
+              sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, px: 1.5 }}>
+              {isDark ? <LightModeIcon fontSize="small" sx={{ color: '#fbbf24' }} /> : <DarkModeIcon fontSize="small" />}
+            </IconButton>
+          </Tooltip>
+          <Button startIcon={<RefreshIcon />} onClick={refreshAll} variant="outlined" size="small">
+            Refresh
+          </Button>
+        </Box>
+      </Box>
+
+      {/* ── Stat Cards ────────────────────────────────────── */}
+      <Grid container spacing={2} sx={{ mb: 3, mt: 1 }}>
+        {statCards.map((s, i) => (
+          <Grid item xs={6} sm={3} key={i}>
+            <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
+              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 2 }}>
+                <Avatar sx={{ bgcolor: s.bg, color: s.color, width: 48, height: 48 }}>
+                  {s.icon}
+                </Avatar>
+                <Box>
+                  <Typography variant="h4" fontWeight={700} lineHeight={1}>{s.value}</Typography>
+                  <Typography variant="caption" color="text.secondary">{s.label}</Typography>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
+
+      {/* ── Tabs ──────────────────────────────────────────── */}
+      <Paper elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, overflow: 'hidden' }}>
+        <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ px: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+          <Tab icon={<PersonIcon />} iconPosition="start" label="User Management" sx={{ textTransform: 'none', fontWeight: 600 }} />
+          <Tab icon={<HistoryIcon />} iconPosition="start" label="User Activities" sx={{ textTransform: 'none', fontWeight: 600 }} />
+          <Tab icon={<DocIcon />} iconPosition="start" label="History" sx={{ textTransform: 'none', fontWeight: 600 }} />
+        </Tabs>
+
+        {/* ────────────── TAB 0: User Management ────────── */}
+        {tab === 0 && (
+          <Box sx={{ p: 2 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6" fontWeight={600}>
+                Registered Users
+              </Typography>
+              <Button startIcon={<AddIcon />} onClick={handleOpenAdd} variant="contained" size="small"
+                sx={{ borderRadius: 2, textTransform: 'none' }}>
+                Add User
+              </Button>
+            </Box>
+
+            {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
+            <TableContainer>
+              {loading ? (
+                <Box sx={{ p: 4, textAlign: 'center' }}><CircularProgress /></Box>
+              ) : (
+                <Table size="small">
+                  <TableHead>
+                    <TableRow sx={{ bgcolor: theadBg }}>
+                      <TableCell sx={{ fontWeight: 700 }}>#</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Company ID</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Company Name</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Role</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Last Login</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Activity</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Created</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }} align="center">Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {users.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} align="center">
+                          <Typography color="text.secondary" sx={{ py: 3 }}>No users found</Typography>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      users.map((user, idx) => {
+                        const ua = userActivityMap[user.company_id] || { logins: 0, uploads: 0, analyses: 0, total: 0 }
+                        return (
+                          <TableRow key={user.company_id} hover>
+                            <TableCell>{idx + 1}</TableCell>
+                            <TableCell>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Avatar sx={{
+                                  width: 28, height: 28, fontSize: 13,
+                                  bgcolor: user.role === 'admin' ? 'warning.main' : 'primary.main',
+                                }}>
+                                  {user.company_id.charAt(0).toUpperCase()}
+                                </Avatar>
+                                <strong>{user.company_id}</strong>
+                              </Box>
+                            </TableCell>
+                            <TableCell>{user.company_name}</TableCell>
+                            <TableCell>
+                              <Chip label={user.role} size="small" variant="outlined"
+                                color={user.role === 'admin' ? 'warning' : 'info'} />
+                            </TableCell>
+                            <TableCell>
+                              <Tooltip title={fmtDate(user.last_login)}>
+                                <span>{fmtRelative(user.last_login)}</span>
+                              </Tooltip>
+                            </TableCell>
+                            <TableCell>
+                              <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                <Tooltip title={`${ua.logins} logins`}>
+                                  <Chip icon={<LoginIcon />} label={ua.logins} size="small" variant="outlined" color="success" sx={{ fontSize: 11 }} />
+                                </Tooltip>
+                                <Tooltip title={`${ua.uploads} uploads`}>
+                                  <Chip icon={<UploadIcon />} label={ua.uploads} size="small" variant="outlined" color="primary" sx={{ fontSize: 11 }} />
+                                </Tooltip>
+                                <Tooltip title={`${ua.analyses} analyses`}>
+                                  <Chip icon={<AnalysisIcon />} label={ua.analyses} size="small" variant="outlined" color="warning" sx={{ fontSize: 11 }} />
+                                </Tooltip>
+                              </Box>
+                            </TableCell>
+                            <TableCell>{fmtDate(user.created_at)}</TableCell>
+                            <TableCell align="center">
+                              {user.role !== 'admin' ? (
+                                <IconButton color="error" size="small" onClick={() => handleDeleteClick(user)} title="Delete user">
+                                  <DeleteIcon fontSize="small" />
+                                </IconButton>
+                              ) : (
+                                <Chip label="Protected" size="small" color="default" sx={{ fontSize: 11 }} />
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              )}
+            </TableContainer>
+          </Box>
+        )}
+
+        {/* ────────────── TAB 1: User Activities ─────────── */}
+        {tab === 1 && (
+          <Box sx={{ p: 2 }}>
+            {/* Toolbar */}
+            <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+              <TextField
+                size="small" placeholder="Search user or detail..."
+                value={actSearch} onChange={e => { setActSearch(e.target.value); setActPage(0) }}
+                InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }}
+                sx={{ minWidth: 220 }}
+              />
+              <TextField
+                select size="small" value={actFilter}
+                onChange={e => { setActFilter(e.target.value); setActPage(0) }}
+                InputProps={{ startAdornment: <InputAdornment position="start"><FilterIcon fontSize="small" /></InputAdornment> }}
+                sx={{ minWidth: 160 }}
+              >
+                <MenuItem value="all">All Activities</MenuItem>
+                <MenuItem value="login">Logins</MenuItem>
+                <MenuItem value="upload">Uploads</MenuItem>
+                <MenuItem value="analysis">Analyses</MenuItem>
+                <MenuItem value="create_user">User Created</MenuItem>
+                <MenuItem value="delete_user">User Deleted</MenuItem>
+              </TextField>
+              <Typography variant="body2" color="text.secondary" sx={{ ml: 'auto' }}>
+                {filteredActivities.length} activities
+              </Typography>
+            </Box>
+
+            <TableContainer>
+              {actLoading ? (
+                <Box sx={{ p: 4, textAlign: 'center' }}><CircularProgress /></Box>
+              ) : (
+                <>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow sx={{ bgcolor: theadBg }}>
+                        <TableCell sx={{ fontWeight: 700, width: 40 }}>#</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>User</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>Action</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>Detail</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>Time</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {filteredActivities.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} align="center">
+                            <Typography color="text.secondary" sx={{ py: 3 }}>No activities recorded yet</Typography>
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        filteredActivities
+                          .slice(actPage * actRowsPerPage, actPage * actRowsPerPage + actRowsPerPage)
+                          .map((a, idx) => (
+                            <TableRow key={idx} hover>
+                              <TableCell>{actPage * actRowsPerPage + idx + 1}</TableCell>
+                              <TableCell>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <Avatar sx={{ width: 24, height: 24, fontSize: 12, bgcolor: 'grey.400' }}>
+                                    {a.user?.charAt(0)?.toUpperCase() || '?'}
+                                  </Avatar>
+                                  <strong>{a.user}</strong>
+                                </Box>
+                              </TableCell>
+                              <TableCell>
+                                <Chip
+                                  icon={activityIcon(a.action)}
+                                  label={a.action?.replace('_', ' ')}
+                                  size="small"
+                                  variant="outlined"
+                                  color={activityColor(a.action)}
+                                  sx={{ textTransform: 'capitalize', fontSize: 12 }}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Typography variant="body2" noWrap sx={{ maxWidth: 340 }}>
+                                  {a.detail || '—'}
+                                </Typography>
+                              </TableCell>
+                              <TableCell>
+                                <Tooltip title={fmtDate(a.timestamp)}>
+                                  <Typography variant="body2" color="text.secondary">{fmtRelative(a.timestamp)}</Typography>
+                                </Tooltip>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                      )}
+                    </TableBody>
+                  </Table>
+                  <TablePagination
+                    component="div"
+                    count={filteredActivities.length}
+                    page={actPage}
+                    onPageChange={(_, p) => setActPage(p)}
+                    rowsPerPage={actRowsPerPage}
+                    onRowsPerPageChange={e => { setActRowsPerPage(parseInt(e.target.value, 10)); setActPage(0) }}
+                    rowsPerPageOptions={[10, 25, 50]}
+                  />
+                </>
+              )}
+            </TableContainer>
+          </Box>
+        )}
+
+        {/* ────────────── TAB 2: History ─────────────────── */}
+        {tab === 2 && (
+          <Box sx={{ p: 2 }}>
+            {/* Toolbar */}
+            <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+              <TextField
+                size="small" placeholder="Search user or detail..."
+                value={histSearch} onChange={e => { setHistSearch(e.target.value); setHistPage(0) }}
+                InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }}
+                sx={{ minWidth: 220 }}
+              />
+              <TextField
+                select size="small" value={histCategory}
+                onChange={e => { setHistCategory(e.target.value); setHistPage(0) }}
+                InputProps={{ startAdornment: <InputAdornment position="start"><FilterIcon fontSize="small" /></InputAdornment> }}
+                sx={{ minWidth: 180 }}
+              >
+                <MenuItem value="all">All History</MenuItem>
+                <MenuItem value="upload">Uploads & Analyses</MenuItem>
+                <MenuItem value="chat">Chat Messages</MenuItem>
+              </TextField>
+              <Typography variant="body2" color="text.secondary" sx={{ ml: 'auto' }}>
+                {(() => {
+                  const f = historyData.filter(h => {
+                    if (histSearch) {
+                      const q = histSearch.toLowerCase()
+                      if (!h.user?.toLowerCase().includes(q) && !h.company_name?.toLowerCase().includes(q) && !h.detail?.toLowerCase().includes(q)) return false
+                    }
+                    return true
+                  })
+                  return `${f.length} records`
+                })()}
+              </Typography>
+            </Box>
+
+            <TableContainer>
+              {histLoading ? (
+                <Box sx={{ p: 4, textAlign: 'center' }}><CircularProgress /></Box>
+              ) : (
+                (() => {
+                  const filtered = historyData.filter(h => {
+                    if (histSearch) {
+                      const q = histSearch.toLowerCase()
+                      if (!h.user?.toLowerCase().includes(q) && !h.company_name?.toLowerCase().includes(q) && !h.detail?.toLowerCase().includes(q)) return false
+                    }
+                    return true
+                  })
+                  return (
+                    <>
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow sx={{ bgcolor: theadBg }}>
+                            <TableCell sx={{ fontWeight: 700, width: 40 }}>#</TableCell>
+                            <TableCell sx={{ fontWeight: 700 }}>User</TableCell>
+                            <TableCell sx={{ fontWeight: 700 }}>Company Name</TableCell>
+                            <TableCell sx={{ fontWeight: 700 }}>Type</TableCell>
+                            <TableCell sx={{ fontWeight: 700 }}>Detail</TableCell>
+                            <TableCell sx={{ fontWeight: 700 }}>Date & Time</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {filtered.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={6} align="center">
+                                <Typography color="text.secondary" sx={{ py: 3 }}>No history records found</Typography>
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            filtered
+                              .slice(histPage * histRowsPerPage, histPage * histRowsPerPage + histRowsPerPage)
+                              .map((h, idx) => (
+                                <TableRow key={idx} hover>
+                                  <TableCell>{histPage * histRowsPerPage + idx + 1}</TableCell>
+                                  <TableCell>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                      <Avatar sx={{ width: 26, height: 26, fontSize: 12, bgcolor: h.role === 'admin' ? 'warning.main' : 'primary.main' }}>
+                                        {h.user?.charAt(0)?.toUpperCase() || '?'}
+                                      </Avatar>
+                                      <strong>{h.user}</strong>
+                                    </Box>
+                                  </TableCell>
+                                  <TableCell>{h.company_name || '—'}</TableCell>
+                                  <TableCell>
+                                    <Chip
+                                      icon={h.action === 'chat' ? <ChatIcon fontSize="small" /> : h.action === 'upload' ? <UploadIcon fontSize="small" /> : <AnalysisIcon fontSize="small" />}
+                                      label={h.action === 'chat' ? 'Chat' : h.action === 'upload' ? 'Upload' : 'Analysis'}
+                                      size="small"
+                                      variant="outlined"
+                                      color={h.action === 'chat' ? 'info' : h.action === 'upload' ? 'primary' : 'warning'}
+                                      sx={{ fontSize: 12 }}
+                                    />
+                                  </TableCell>
+                                  <TableCell>
+                                    <Typography variant="body2" noWrap sx={{ maxWidth: 360 }}>
+                                      {h.detail || '—'}
+                                    </Typography>
+                                  </TableCell>
+                                  <TableCell>
+                                    <Typography variant="body2" color="text.secondary">
+                                      {fmtDate(h.timestamp)}
+                                    </Typography>
+                                  </TableCell>
+                                </TableRow>
+                              ))
+                          )}
+                        </TableBody>
+                      </Table>
+                      <TablePagination
+                        component="div"
+                        count={filtered.length}
+                        page={histPage}
+                        onPageChange={(_, p) => setHistPage(p)}
+                        rowsPerPage={histRowsPerPage}
+                        onRowsPerPageChange={e => { setHistRowsPerPage(parseInt(e.target.value, 10)); setHistPage(0) }}
+                        rowsPerPageOptions={[10, 25, 50]}
+                      />
+                    </>
+                  )
+                })()
+              )}
+            </TableContainer>
+          </Box>
+        )}
+      </Paper>
+
+      {/* ── Add User Dialog ───────────────────────────────── */}
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700 }}>Add New User</DialogTitle>
+        <DialogContent>
+          {formError && <Alert severity="error" sx={{ mb: 2 }}>{formError}</Alert>}
+          <TextField label="Company ID" fullWidth margin="normal" required
+            value={formData.company_id}
+            onChange={e => setFormData({ ...formData, company_id: e.target.value })}
+            placeholder="e.g. ACME-001" inputProps={{ minLength: 3, maxLength: 50 }}
+          />
+          <TextField label="Company Name" fullWidth margin="normal" required
+            value={formData.company_name}
+            onChange={e => setFormData({ ...formData, company_name: e.target.value })}
+            placeholder="e.g. Acme Corporation"
+          />
+          <TextField label="Password" type="password" fullWidth margin="normal" required
+            value={formData.password}
+            onChange={e => setFormData({ ...formData, password: e.target.value })}
+            placeholder="Min 6 characters" inputProps={{ minLength: 6 }}
+          />
+          <TextField label="Role" select fullWidth margin="normal"
+            value={formData.role}
+            onChange={e => setFormData({ ...formData, role: e.target.value })}
+          >
+            <MenuItem value="user">User</MenuItem>
+            <MenuItem value="admin">Admin</MenuItem>
+          </TextField>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setDialogOpen(false)} disabled={submitting}>Cancel</Button>
+          <Button onClick={handleAddUser} variant="contained" disabled={submitting} sx={{ borderRadius: 2, textTransform: 'none' }}>
+            {submitting ? 'Creating...' : 'Create User'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ── Delete Confirmation Dialog ────────────────────── */}
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+        <DialogTitle sx={{ fontWeight: 700 }}>Delete User</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete <strong>{selectedUser?.company_id}</strong> ({selectedUser?.company_name})?
+          </Typography>
+          <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+            This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleDeleteConfirm} color="error" variant="contained" sx={{ borderRadius: 2, textTransform: 'none' }}>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+    </MuiThemeProvider>
+  )
+}

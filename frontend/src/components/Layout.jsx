@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
   AppBar,
@@ -17,7 +17,9 @@ import {
   ListItemText,
   Divider,
   useMediaQuery,
-  useTheme,
+  ThemeProvider as MuiThemeProvider,
+  CssBaseline,
+  createTheme,
 } from '@mui/material'
 import MenuIcon from '@mui/icons-material/Menu'
 import SecurityIcon from '@mui/icons-material/Security'
@@ -27,32 +29,64 @@ import UploadFileIcon from '@mui/icons-material/UploadFile'
 import AssessmentIcon from '@mui/icons-material/Assessment'
 import HistoryIcon from '@mui/icons-material/History'
 import InfoIcon from '@mui/icons-material/Info'
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
+import { useTheme as useAppTheme } from '../ThemeContext'
 
-const pages = [
+const allPages = [
   { name: 'AI Chat', path: '/chat', icon: <ChatIcon /> },
   { name: 'Dashboard', path: '/dashboard', icon: <DashboardIcon /> },
   { name: 'Upload Document', path: '/upload', icon: <UploadFileIcon /> },
   { name: 'Frameworks', path: '/frameworks', icon: <AssessmentIcon /> },
   { name: 'History', path: '/history', icon: <HistoryIcon /> },
   { name: 'About', path: '/about', icon: <InfoIcon /> },
+  { name: 'Admin', path: '/admin', icon: <AdminPanelSettingsIcon /> },
 ]
 
 function Layout({ children }) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const location = useLocation()
-  const theme = useTheme()
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'))
+  const userRole = (() => { try { return JSON.parse(localStorage.getItem('user'))?.role } catch { return null } })()
+  const pages = userRole === 'admin'
+    ? allPages.filter((p) => p.path !== '/upload' && p.path !== '/dashboard')
+    : allPages.filter((p) => p.path !== '/admin')
+  const { isDark } = useAppTheme()
+
+  const muiTheme = useMemo(() => createTheme({
+    palette: {
+      mode: isDark ? 'dark' : 'light',
+      ...(isDark ? {
+        background: { default: '#0f172a', paper: '#1e293b' },
+        text: { primary: '#e2e8f0', secondary: '#94a3b8' },
+        divider: '#334155',
+      } : {
+        background: { default: '#f8fafc', paper: '#ffffff' },
+        text: { primary: '#1e293b', secondary: '#475569' },
+        divider: '#e2e8f0',
+      }),
+      primary: { main: '#6366f1' },
+    },
+    typography: { fontFamily: '"Inter", "Segoe UI", Roboto, sans-serif' },
+    components: {
+      MuiPaper: { styleOverrides: { root: { backgroundImage: 'none' } } },
+    },
+  }), [isDark])
+
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down('md'))
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen)
   }
+
+  const sidebarBg = isDark ? '#111827' : '#1e293b'
+  const footerBg = isDark ? '#111827' : '#1e293b'
+  const footerBorder = isDark ? '#1f2937' : '#334155'
 
   const drawer = (
     <Box onClick={handleDrawerToggle} sx={{ textAlign: 'center' }}>
       <Typography variant="h6" sx={{ my: 2, color: 'white' }}>
         🔐 AIComplianceGuard
       </Typography>
-      <Divider sx={{ borderColor: '#334155' }} />
+      <Divider sx={{ borderColor: footerBorder }} />
       <List>
         {pages.map((page) => (
           <ListItem
@@ -83,6 +117,8 @@ function Layout({ children }) {
   )
 
   return (
+    <MuiThemeProvider theme={muiTheme}>
+    <CssBaseline />
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <AppBar position="static" elevation={2}>
         <Container maxWidth="xl">
@@ -153,7 +189,7 @@ function Layout({ children }) {
           '& .MuiDrawer-paper': { 
             boxSizing: 'border-box', 
             width: 240,
-            backgroundColor: '#1e293b',
+            backgroundColor: sidebarBg,
             color: '#ffffff',
           },
         }}
@@ -171,20 +207,21 @@ function Layout({ children }) {
           py: 3,
           px: 2,
           mt: 'auto',
-          backgroundColor: '#1e293b',
-          borderTop: '1px solid #334155',
+          backgroundColor: footerBg,
+          borderTop: `1px solid ${footerBorder}`,
         }}
       >
         <Container maxWidth="xl">
-          <Typography variant="body2" color="text.secondary" align="center">
+          <Typography variant="body2" sx={{ color: '#94a3b8' }} align="center">
             © 2026 AIComplianceGuard - Secure AI-Powered Compliance Validation Platform
           </Typography>
-          <Typography variant="caption" color="text.secondary" align="center" display="block">
+          <Typography variant="caption" sx={{ color: '#64748b' }} align="center" display="block">
             Built with ❤️ for secure compliance automation
           </Typography>
         </Container>
       </Box>
     </Box>
+    </MuiThemeProvider>
   )
 }
 

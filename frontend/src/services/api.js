@@ -117,6 +117,42 @@ export const adminAPI = {
     const response = await api.get('/admin/system-health')
     return response.data
   },
+
+  // User management (admin-only)
+  listUsers: async () => {
+    const response = await api.get('/admin/users')
+    return response.data
+  },
+
+  createUser: async (companyId, companyName, password, role = 'user') => {
+    const response = await api.post('/admin/users', {
+      company_id: companyId,
+      company_name: companyName,
+      password,
+      role,
+    })
+    return response.data
+  },
+
+  deleteUser: async (companyId) => {
+    const response = await api.delete(`/admin/users/${encodeURIComponent(companyId)}`)
+    return response.data
+  },
+
+  listActivities: async (user = null, limit = 100) => {
+    const params = { limit }
+    if (user) params.user = user
+    const response = await api.get('/admin/activities', { params })
+    return response.data
+  },
+
+  getHistory: async (category = null, user = null, limit = 200) => {
+    const params = { limit }
+    if (category) params.category = category
+    if (user) params.user = user
+    const response = await api.get('/admin/history', { params })
+    return response.data
+  },
 }
 
 export default api

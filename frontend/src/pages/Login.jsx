@@ -1,19 +1,19 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { authAPI } from '../services/api'
 import { useTheme } from '../ThemeContext'
 
 /* ================================================================
-   FULL-SCREEN LOGIN / REGISTER  — dark / light theme support
+   FULL-SCREEN LOGIN — dark / light theme support
+   Admin-only registration. Users can only log in.
    ================================================================ */
 
 export default function Login({ onAuth }) {
   const { theme: t, isDark, toggle: toggleTheme } = useTheme()
+  const navigate = useNavigate()
 
-  const [mode, setMode] = useState('login') // 'login' | 'register'
   const [companyId, setCompanyId] = useState('')
-  const [companyName, setCompanyName] = useState('')
   const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -33,46 +33,46 @@ export default function Login({ onAuth }) {
       setError('Password must be at least 6 characters')
       return
     }
-    if (mode === 'register') {
-      if (!companyName.trim()) {
-        setError('Please enter your company name')
-        return
-      }
-      if (password !== confirmPassword) {
-        setError('Passwords do not match')
-        return
-      }
-    }
 
     setLoading(true)
     try {
-      let res
-      if (mode === 'register') {
-        res = await authAPI.register(companyId.trim(), companyName.trim(), password)
-      } else {
-        res = await authAPI.login(companyId.trim(), password)
-      }
+      const res = await authAPI.login(companyId.trim(), password)
 
       localStorage.setItem('token', res.access_token)
-      localStorage.setItem('user', JSON.stringify({
-        company_id: companyId.trim(),
-        company_name: companyName.trim() || companyId.trim(),
-      }))
+
+      // Decode JWT to extract role
+      let role = 'user'
+      try {
+        const payload = JSON.parse(atob(res.access_token.split('.')[1]))
+        role = payload.role || 'user'
+        localStorage.setItem('user', JSON.stringify({
+          company_id: payload.sub || companyId.trim(),
+          company_name: payload.name || companyId.trim(),
+          role,
+        }))
+      } catch {
+        localStorage.setItem('user', JSON.stringify({
+          company_id: companyId.trim(),
+          company_name: companyId.trim(),
+          role: 'user',
+        }))
+      }
 
       onAuth && onAuth()
+
+      // Redirect admin to admin dashboard, users to user dashboard
+      if (role === 'admin') {
+        navigate('/admin', { replace: true })
+      } else {
+        navigate('/dashboard', { replace: true })
+      }
     } catch (err) {
       const msg = err?.response?.data?.detail
       if (msg) setError(typeof msg === 'string' ? msg : JSON.stringify(msg))
-      else setError(mode === 'login' ? 'Invalid Company ID or password' : 'Registration failed. Try a different Company ID.')
+      else setError('Invalid Company ID or password')
     } finally {
       setLoading(false)
     }
-  }
-
-  const switchMode = () => {
-    setMode(m => m === 'login' ? 'register' : 'login')
-    setError('')
-    setConfirmPassword('')
   }
 
   const inputStyle = {
@@ -150,7 +150,7 @@ export default function Login({ onAuth }) {
             AI Compliance Guard
           </h1>
           <p style={{ color: t.textMuted, fontSize: 14, margin: 0 }}>
-            {mode === 'login' ? 'Sign in to your account' : 'Create a new account'}
+            Sign in to your account
           </p>
         </div>
 
@@ -194,24 +194,6 @@ export default function Login({ onAuth }) {
             />
           </label>
 
-          {/* Company Name (register only) */}
-          {mode === 'register' && (
-            <label style={{ display: 'block', marginBottom: 16 }}>
-              <span style={{ color: t.textSecondary, fontSize: 13, fontWeight: 500, display: 'block', marginBottom: 6 }}>
-                Company Name
-              </span>
-              <input
-                type="text"
-                value={companyName}
-                onChange={e => setCompanyName(e.target.value)}
-                placeholder="e.g. Acme Corporation"
-                style={inputStyle}
-                onFocus={e => e.target.style.borderColor = t.accent}
-                onBlur={e => e.target.style.borderColor = t.borderInput}
-              />
-            </label>
-          )}
-
           {/* Password */}
           <label style={{ display: 'block', marginBottom: 16 }}>
             <span style={{ color: t.textSecondary, fontSize: 13, fontWeight: 500, display: 'block', marginBottom: 6 }}>
@@ -227,24 +209,6 @@ export default function Login({ onAuth }) {
               onBlur={e => e.target.style.borderColor = t.borderInput}
             />
           </label>
-
-          {/* Confirm Password (register only) */}
-          {mode === 'register' && (
-            <label style={{ display: 'block', marginBottom: 16 }}>
-              <span style={{ color: t.textSecondary, fontSize: 13, fontWeight: 500, display: 'block', marginBottom: 6 }}>
-                Confirm Password
-              </span>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={e => setConfirmPassword(e.target.value)}
-                placeholder="Re-enter password"
-                style={inputStyle}
-                onFocus={e => e.target.style.borderColor = t.accent}
-                onBlur={e => e.target.style.borderColor = t.borderInput}
-              />
-            </label>
-          )}
 
           {/* Submit */}
           <button
@@ -262,27 +226,12 @@ export default function Login({ onAuth }) {
             onMouseEnter={e => { if (!loading) e.currentTarget.style.opacity = '0.9' }}
             onMouseLeave={e => e.currentTarget.style.opacity = '1'}
           >
-            {loading
-              ? (mode === 'login' ? 'Signing in...' : 'Creating account...')
-              : (mode === 'login' ? 'Sign In' : 'Create Account')
-            }
+            {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
 
-        {/* Toggle login/register */}
-        <p style={{ textAlign: 'center', color: t.textMuted, fontSize: 14, marginTop: 20 }}>
-          {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
-          <button
-            onClick={switchMode}
-            style={{
-              background: 'none', border: 'none',
-              color: t.accent, cursor: 'pointer',
-              fontSize: 14, fontWeight: 600, padding: 0,
-              textDecoration: 'underline', textUnderlineOffset: 3,
-            }}
-          >
-            {mode === 'login' ? 'Create one' : 'Sign in'}
-          </button>
+        <p style={{ textAlign: 'center', color: t.textMuted, fontSize: 13, marginTop: 20 }}>
+          Contact your administrator to get an account
         </p>
       </div>
     </div>

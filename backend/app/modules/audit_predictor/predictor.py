@@ -9,10 +9,6 @@ import numpy as np
 import pickle
 from pathlib import Path
 
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
-
 from app.config.settings import settings
 
 logger = logging.getLogger(__name__)
@@ -51,6 +47,9 @@ class AuditRiskPredictor:
     
     def _initialize_model(self):
         """Initialize new Random Forest model with synthetic data"""
+        from sklearn.ensemble import RandomForestClassifier
+        from sklearn.preprocessing import StandardScaler
+        
         logger.info("Initializing new audit prediction model")
         
         # Create synthetic training data (replace with real data in production)
@@ -294,5 +293,18 @@ class AuditRiskPredictor:
         return recommendations.get(readiness_level, "")
 
 
-# Singleton instance
-audit_predictor = AuditRiskPredictor()
+# Lazy singleton instance
+_audit_predictor_instance = None
+
+def _get_audit_predictor():
+    global _audit_predictor_instance
+    if _audit_predictor_instance is None:
+        _audit_predictor_instance = AuditRiskPredictor()
+    return _audit_predictor_instance
+
+class _LazyAuditPredictor:
+    """Proxy that defers AuditRiskPredictor construction until first use."""
+    def __getattr__(self, name):
+        return getattr(_get_audit_predictor(), name)
+
+audit_predictor = _LazyAuditPredictor()

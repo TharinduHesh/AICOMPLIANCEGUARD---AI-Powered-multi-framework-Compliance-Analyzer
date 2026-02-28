@@ -1,190 +1,185 @@
 """
 Compliance Analysis API Endpoints
-Main endpoints for document upload and analysis
+Main endpoints for document upload and 3-layer hybrid compliance analysis.
+
+Architecture:
+  Layer 1 → Rule-Based Structural Compliance
+  Layer 2 → Sentence-BERT Semantic Similarity
+  Layer 3 → GPT/LLM Reasoning & Improvement
+  CCI    → Compliance Confidence Index
 """
 
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
-from typing import List
+from typing import Dict, List
 import logging
 from datetime import datetime
+from pathlib import Path
 import secrets
 
 from app.models.schemas import (
     DocumentUploadResponse,
     ComplianceAnalysisRequest,
-    ComplianceAnalysisResponse
+    ComplianceAnalysisResponse,
 )
-from app.modules.document_processor import document_processor
-from app.modules.nlp_engine import nlp_engine
-from app.modules.cia_validator import cia_validator
-from app.modules.iso9001_validator import iso9001_validator
-from app.modules.audit_predictor import audit_predictor
 from app.modules.security_layer import security_layer
-from app.modules.knowledge_graph import knowledge_graph
+from app.modules.hybrid_pipeline import hybrid_pipeline
 from app.modules.firebase_storage import firebase_storage
+from app.api.endpoints.auth import verify_token, record_activity
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+# ── In-memory file-id → path map (simple; production would use DB) ───
+_uploaded_files: Dict[str, Dict] = {}
+
 
 @router.post("/upload", response_model=DocumentUploadResponse)
-async def upload_document(file: UploadFile = File(...)):
+async def upload_document(file: UploadFile = File(...), token_data: dict = Depends(verify_token)):
     """
-    Upload compliance document for analysis
-    
+    Upload compliance document for analysis.
+
     - Supports PDF and DOCX formats
     - Maximum file size: 10MB
     - Files are encrypted and automatically deleted after processing
     """
+    user_id = token_data.get("sub", "unknown")
     try:
-        # Read file data
         file_data = await file.read()
-        
+
         # Validate file size
         is_valid, error_msg = security_layer.validate_file_size(len(file_data))
         if not is_valid:
             raise HTTPException(status_code=400, detail=error_msg)
-        
+
         # Validate file format
-        file_extension = file.filename.split('.')[-1].lower()
-        if file_extension not in ['pdf', 'docx']:
+        file_extension = file.filename.split(".")[-1].lower()
+        if file_extension not in ["pdf", "docx"]:
             raise HTTPException(
                 status_code=400,
-                detail="Unsupported file format. Only PDF and DOCX are supported."
+                detail="Unsupported file format. Only PDF and DOCX are supported.",
             )
-        
-        # Secure upload
-        secure_path, file_hash = security_layer.secure_file_upload(file_data, file.filename)
-        
-        # Log security event
-        security_layer.log_security_event(
-            'document_upload',
-            {
-                'filename': file.filename,
-                'size': len(file_data),
-                'hash': file_hash[:16]
-            }
+
+        # Secure upload (stores to temp dir, hashes, schedules cleanup)
+        secure_path, file_hash = security_layer.secure_file_upload(
+            file_data, file.filename
         )
-        
-        # Store audit log in Firebase
+
+        security_layer.log_security_event(
+            "document_upload",
+            {"filename": file.filename, "size": len(file_data), "hash": file_hash[:16]},
+        )
+
+        # Firebase audit log
         try:
-            firebase_storage.store_audit_log({
-                'event_type': 'document_upload',
-                'file_name': file.filename,
-                'file_size': len(file_data),
-                'file_hash': file_hash[:32],
-                'ip_address': 'unknown'  # Add actual IP from request if needed
-            })
+            firebase_storage.store_audit_log(
+                {
+                    "event_type": "document_upload",
+                    "file_name": file.filename,
+                    "file_size": len(file_data),
+                    "file_hash": file_hash[:32],
+                }
+            )
         except Exception as e:
-            logger.warning(f"Firebase audit log failed: {str(e)}")
-        
-        # Generate file ID
+            logger.warning(f"Firebase audit log failed: {e}")
+
+        # Map file_id → path so /analyze can retrieve the file
         file_id = secrets.token_urlsafe(16)
-        
+        _uploaded_files[file_id] = {
+            "path": secure_path,
+            "name": file.filename,
+            "hash": file_hash,
+            "size": len(file_data),
+        }
+
         return DocumentUploadResponse(
             file_id=file_id,
             file_name=file.filename,
             file_hash=file_hash,
             file_size=len(file_data),
-            uploaded_at=datetime.utcnow().isoformat()
+            uploaded_at=datetime.utcnow().isoformat(),
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Upload error: {str(e)}", exc_info=True)
+        logger.error(f"Upload error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="File upload failed")
+    finally:
+        # Track the upload activity
+        record_activity(user_id, "upload", f"Uploaded {file.filename}")
 
 
-@router.post("/analyze", response_model=ComplianceAnalysisResponse)
-async def analyze_compliance(request: ComplianceAnalysisRequest):
+@router.post("/analyze")
+async def analyze_compliance(request: ComplianceAnalysisRequest, token_data: dict = Depends(verify_token)):
     """
-    Analyze uploaded document for compliance
-    
-    - Multi-framework analysis (ISO 27001, ISO 9001, NIST, GDPR)
-    - CIA balance analysis
-    - Missing control detection
-    - Audit risk prediction
+    3-Layer Hybrid Compliance Analysis
+
+    Pipeline:
+      1. Text Extraction (document_processor)
+      2. Layer 1 — Rule-Based Structural Check
+      3. Layer 2 — Sentence-BERT Semantic Similarity
+      4. Layer 3 — GPT/LLM Reasoning (gap explanation, improvements, CIA impact)
+      5. CIA Balance Analysis
+      6. Audit Risk Prediction
+      7. Compliance Confidence Index (CCI)
     """
+    user_id = token_data.get("sub", "unknown")
     try:
-        logger.info(f"Starting compliance analysis for file_id: {request.file_id}")
-        
-        # For demo purposes, we'll use a sample analysis
-        # In production, retrieve the file using file_id
-        
-        # Simulated document processing (replace with actual file retrieval)
-        sample_clauses = [
-            {'text': 'Access to information systems must be controlled and monitored.', 'section': '1'},
-            {'text': 'All employees must use strong passwords and change them every 90 days.', 'section': '2'},
-            {'text': 'Data backups must be performed daily and stored securely offsite.', 'section': '3'},
-            {'text': 'Incident response procedures must be documented and tested annually.', 'section': '4'},
-            {'text': 'Information security policies must be reviewed and approved by management.', 'section': '5'}
-        ]
-        
-        results = {}
-        
-        # Analyze for each requested framework
-        for framework in request.frameworks:
-            logger.info(f"Analyzing framework: {framework}")
-            compliance_results = nlp_engine.analyze_document_compliance(sample_clauses, framework)
-            results[framework] = compliance_results
-        
-        # CIA Analysis
-        cia_analysis = None
-        if request.include_cia:
-            logger.info("Performing CIA analysis")
-            cia_analysis = cia_validator.analyze_document_cia(sample_clauses)
-        
-        # ISO 9001 Analysis
-        iso9001_analysis = None
-        if request.include_iso9001:
-            logger.info("Performing ISO 9001 analysis")
-            iso9001_analysis = iso9001_validator.validate_iso9001_compliance(sample_clauses)
-        
-        # Prepare data for risk prediction
-        analysis_data = {
-            'missing_controls_count': results.get('iso27001', {}).get('total_controls', 114) - 
-                                     results.get('iso27001', {}).get('matched_controls_count', 0),
-            'cia_balance_index': cia_analysis.get('cia_balance_index', 50) if cia_analysis else 50,
-            'weak_clauses': results.get('iso27001', {}).get('weak_clauses', []),
-            'total_clauses': len(sample_clauses),
-            'compliance_percentage': results.get('iso27001', {}).get('compliance_percentage', 0)
-        }
-        
-        # Risk Prediction
-        logger.info("Predicting audit risk")
-        risk_prediction = audit_predictor.predict_risk(analysis_data)
-        audit_readiness = audit_predictor.get_audit_readiness_score(risk_prediction)
-        
-        # Generate analysis ID
-        analysis_id = secrets.token_urlsafe(16)
-        
-        logger.info(f"Analysis completed: {analysis_id}")
-        
-        response = ComplianceAnalysisResponse(
-            analysis_id=analysis_id,
-            file_name=f"document_{request.file_id}",
-            frameworks=request.frameworks,
-            compliance_results=results,
-            cia_analysis=cia_analysis,
-            iso9001_analysis=iso9001_analysis,
-            risk_prediction=risk_prediction,
-            audit_readiness=audit_readiness,
-            analyzed_at=datetime.utcnow().isoformat()
-        )
-        
-        # Store metadata in Firebase (NO raw document content)
+        logger.info(f"Starting hybrid analysis for file_id: {request.file_id}")
+
+        # Resolve the uploaded file
+        file_info = _uploaded_files.get(request.file_id)
+
+        if file_info and Path(file_info["path"]).exists():
+            # ── Real document path ────────────────────────────────
+            result = hybrid_pipeline.run(
+                file_path=file_info["path"],
+                frameworks=request.frameworks,
+                include_cia=request.include_cia,
+                file_name=file_info["name"],
+            )
+        else:
+            # ── Fallback: demo clauses (when file expired / not found) ─
+            logger.warning("File not found; using demo clauses")
+            demo_clauses = [
+                {"text": "The organization shall establish, implement, maintain and continually improve an information security management system.", "section": "4"},
+                {"text": "Top management shall demonstrate leadership and commitment with respect to the information security management system.", "section": "5"},
+                {"text": "The organization shall define and apply an information security risk assessment process.", "section": "6.1.2"},
+                {"text": "The organization shall implement an information security risk treatment plan.", "section": "6.1.3"},
+                {"text": "Information security objectives shall be established at relevant functions and levels.", "section": "6.2"},
+                {"text": "The organization shall determine the competence of persons doing work that affects information security performance.", "section": "7.2"},
+                {"text": "Access to information and information processing facilities shall be restricted.", "section": "A.9"},
+                {"text": "Cryptographic controls shall be implemented to protect information confidentiality and integrity.", "section": "A.10"},
+                {"text": "Data backups must be performed daily and stored securely offsite.", "section": "A.12"},
+                {"text": "Incident response procedures must be documented and tested annually.", "section": "A.16"},
+                {"text": "Business continuity plans shall be developed, maintained and tested.", "section": "A.17"},
+                {"text": "All applicable legal and regulatory requirements shall be identified and documented.", "section": "A.18"},
+            ]
+            result = hybrid_pipeline.run(
+                clauses=demo_clauses,
+                full_text=" ".join(c["text"] for c in demo_clauses),
+                frameworks=request.frameworks,
+                include_cia=request.include_cia,
+                file_name=f"document_{request.file_id}",
+            )
+
+        logger.info(f"Hybrid analysis completed: {result['analysis_id']}")
+
+        # Firebase metadata (sanitised)
         try:
-            firebase_storage.store_analysis_metadata(response.dict())
-            logger.info(f"✅ Metadata stored in Firebase for analysis: {analysis_id}")
+            safe = {k: v for k, v in result.items() if k not in ("hybrid_analysis",)}
+            firebase_storage.store_analysis_metadata(safe)
         except Exception as e:
-            logger.warning(f"Firebase storage failed (continuing without): {str(e)}")
-        
-        return response
-        
+            logger.warning(f"Firebase storage failed: {e}")
+
+        return result
+
     except Exception as e:
-        logger.error(f"Analysis error: {str(e)}", exc_info=True)
+        logger.error(f"Analysis error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Compliance analysis failed")
+    finally:
+        frameworks_str = ", ".join(request.frameworks) if request.frameworks else "iso27001"
+        record_activity(user_id, "analysis", f"Analyzed document (frameworks: {frameworks_str})")
 
 
 @router.get("/frameworks")
