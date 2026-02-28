@@ -251,15 +251,7 @@ npm test
 - Explainable AI module
 - LLM remediation drafting
 
-## 📄 License
 
-MIT License - See LICENSE file for details
-
-## 👥 Contributors
-
-Developed as part of ISP (Individual Software Project) for cybersecurity research and commercial application.
-
-## 📧 Contact
 
 For support, feature requests, or commercial inquiries: [Contact Information]
 
