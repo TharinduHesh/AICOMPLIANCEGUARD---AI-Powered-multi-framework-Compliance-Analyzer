@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events"""
-    logger.info(f"🚀 Starting {settings.APP_NAME} v{settings.APP_VERSION}")
+    logger.info(f"Starting {settings.APP_NAME} v{settings.APP_VERSION}")
     logger.info(f"Environment: {settings.ENVIRONMENT}")
     
     # Create necessary directories
@@ -32,7 +32,7 @@ async def lifespan(app: FastAPI):
     
     yield
     
-    logger.info(f"🛑 Shutting down {settings.APP_NAME}")
+    logger.info(f"Shutting down {settings.APP_NAME}")
 
 
 # Create FastAPI application

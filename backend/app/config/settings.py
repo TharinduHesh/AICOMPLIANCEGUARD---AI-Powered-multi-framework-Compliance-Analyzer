@@ -40,8 +40,17 @@ class Settings(BaseSettings):
     MAX_DOCUMENT_SIZE_MB: int = 10
     SUPPORTED_FORMATS: List[str] = ["pdf", "docx"]
 
-    # LLM (Llama) Configuration
-    LLM_PROVIDER: str = "llama_cpp"        # "llama_cpp", "transformers", or "none" (rule-based fallback)
+    # LLM Configuration
+    LLM_PROVIDER: str = "gemini"           # "gemini", "llama_cpp", "transformers", or "none" (rule-based fallback)
+    
+    # Gemini Configuration
+    GEMINI_API_KEY: str = ""               # Google Gemini API key
+    GEMINI_MODEL: str = "gemini-2.0-flash"  # Gemini model name
+    GEMINI_MAX_TOKENS: int = 2048
+    GEMINI_TEMPERATURE: float = 0.3
+    GEMINI_TOP_P: float = 0.9
+    
+    # Llama Configuration (alternative local LLM)
     LLAMA_MODEL_PATH: str = ""             # Path to .gguf model file (for llama_cpp)
     LLAMA_MODEL_REPO: str = "TheBloke/Llama-2-7B-Chat-GGUF"   # HF repo to auto-download from
     LLAMA_MODEL_FILE: str = "llama-2-7b-chat.Q4_K_M.gguf"     # Specific GGUF file name

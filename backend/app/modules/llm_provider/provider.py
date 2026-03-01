@@ -1,12 +1,14 @@
 """
-LLM Provider — Llama model loading, prompt formatting and generation.
+LLM Provider — Multi-backend LLM loading, prompt formatting and generation.
 
-Supports three modes (configured via LLM_PROVIDER env var):
-  - "llama_cpp"    → llama-cpp-python with GGUF quantised models (recommended)
+Supports four modes (configured via LLM_PROVIDER env var):
+  - "gemini"       → Google Gemini API (recommended, uses API key)
+  - "llama_cpp"    → llama-cpp-python with GGUF quantised models
   - "transformers" → HuggingFace transformers pipeline
   - "none"         → disabled; chat engine falls back to rule-based responses
 
-Auto-downloads the model on first run if LLAMA_MODEL_PATH is empty.
+For Gemini: set GEMINI_API_KEY in your .env file.
+For Llama: auto-downloads the model on first run if LLAMA_MODEL_PATH is empty.
 """
 
 import logging
@@ -67,6 +69,7 @@ class LLMProvider:
         self._model = None
         self._tokenizer = None
         self._pipeline = None
+        self._gemini_model = None
         self._is_loaded = False
 
         if self.provider == "none":
@@ -125,12 +128,45 @@ class LLMProvider:
         if self._is_loaded:
             return
 
-        if self.provider == "llama_cpp":
+        if self.provider == "gemini":
+            self._load_gemini()
+        elif self.provider == "llama_cpp":
             self._load_llama_cpp()
         elif self.provider == "transformers":
             self._load_transformers()
         else:
             logger.warning(f"Unknown LLM_PROVIDER: {self.provider}")
+
+    def _load_gemini(self):
+        """Load Google Gemini model via API key."""
+        try:
+            import google.generativeai as genai
+        except ImportError:
+            raise ImportError(
+                "google-generativeai is not installed. "
+                "Run:  pip install google-generativeai"
+            )
+
+        api_key = settings.GEMINI_API_KEY
+        if not api_key:
+            raise RuntimeError(
+                "GEMINI_API_KEY is not set. Add it to your .env file."
+            )
+
+        genai.configure(api_key=api_key)
+
+        generation_config = genai.types.GenerationConfig(
+            max_output_tokens=settings.GEMINI_MAX_TOKENS,
+            temperature=settings.GEMINI_TEMPERATURE,
+            top_p=settings.GEMINI_TOP_P,
+        )
+
+        self._gemini_model = genai.GenerativeModel(
+            model_name=settings.GEMINI_MODEL,
+            generation_config=generation_config,
+        )
+        self._is_loaded = True
+        logger.info(f"Gemini model loaded: {settings.GEMINI_MODEL}")
 
     def _load_llama_cpp(self):
         """Load model via llama-cpp-python."""
@@ -224,12 +260,50 @@ class LLMProvider:
         max_tok = max_tokens or settings.LLAMA_MAX_TOKENS
         temp = temperature or settings.LLAMA_TEMPERATURE
 
-        if self.provider == "llama_cpp":
+        if self.provider == "gemini":
+            return self._generate_gemini(full_system, messages, max_tok, temp)
+        elif self.provider == "llama_cpp":
             return self._generate_llama_cpp(full_system, messages, max_tok, temp)
         elif self.provider == "transformers":
             return self._generate_transformers(full_system, messages, max_tok, temp)
         else:
             raise RuntimeError(f"Unknown provider: {self.provider}")
+
+    def _generate_gemini(
+        self,
+        system: str,
+        messages: List[Dict[str, str]],
+        max_tokens: int,
+        temperature: float,
+    ) -> str:
+        """Generate response using Google Gemini API."""
+        import google.generativeai as genai
+
+        # Build Gemini-compatible chat history
+        gemini_history = []
+        for m in messages[:-1]:  # all except the last user message
+            role = "user" if m["role"] == "user" else "model"
+            gemini_history.append({"role": role, "parts": [m["content"]]})
+
+        # Start chat with system prompt and history
+        chat = self._gemini_model.start_chat(history=gemini_history)
+
+        # The last message should be the user's current query
+        last_message = messages[-1]["content"] if messages else ""
+
+        # Prepend system context for the first message
+        if system and not gemini_history:
+            last_message = f"[System Instructions]: {system}\n\n[User Query]: {last_message}"
+
+        response = chat.send_message(
+            last_message,
+            generation_config=genai.types.GenerationConfig(
+                max_output_tokens=max_tokens,
+                temperature=temperature,
+                top_p=settings.GEMINI_TOP_P,
+            ),
+        )
+        return response.text.strip()
 
     def _generate_llama_cpp(
         self,
